@@ -7,7 +7,7 @@ from extractors.education_extractor import extract_education
 from extractors.skills_extractor import extract_skills
 from extractors.experience_extractor import extract_experience
 from extractors.projects_extractor import extract_projects
-from extractors.certifications_extractor import extract_certifications
+from extractors.certifications_extractors import extract_certifications
 
 from text.extract import extract_text
 
