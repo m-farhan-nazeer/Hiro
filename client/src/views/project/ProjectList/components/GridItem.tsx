@@ -50,7 +50,7 @@ const GridItem = ({ job, onJobUpdated }: JobItemProps) => {
         <Card bodyClass="h-full">
             <div className="flex flex-col justify-between h-full">
                 <div className="flex justify-between">
-                    <Link to="/access-denied">
+                    <Link to="/app/job">
                         <h6>{job.title}</h6>
                     </Link>
                     <ItemDropdown job={job} onJobUpdated={onJobUpdated} />
