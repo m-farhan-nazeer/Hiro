@@ -1,7 +1,7 @@
 # main.py
 
-from config import BASE_DIR
-from utils import store_job_description, rank_resume_against_job
+from .config import BASE_DIR
+from .utils import store_job_description, rank_resume_against_job
 import os
 
 if __name__ == "__main__":
