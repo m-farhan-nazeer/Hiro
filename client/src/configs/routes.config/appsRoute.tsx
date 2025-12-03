@@ -23,6 +23,12 @@ const appsRoute: Routes = [
         authority: [ADMIN, USER],
     },
     {
+        key: 'job',
+        path: `${APP_PREFIX_PATH}/job`,
+        component: lazy(() => import('@/views/project/ProjectList/components/JobPage')),
+        authority: [ADMIN, USER],
+    },
+    {
         key: 'applicants',
         path: `${APP_PREFIX_PATH}/applicants`,
         component: lazy(() => import('@/views/crm/Customers')),

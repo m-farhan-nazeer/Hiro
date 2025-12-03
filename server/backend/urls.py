@@ -41,6 +41,8 @@ urlpatterns = [
     path("", include(router.urls)),  
     path("admin/", admin.site.urls),
 
+    path('',include('posts.urls')),
+
     # Users
     path("users/register/", RegisterView.as_view(), name="user-register"),
     path("users/login/", LoginView.as_view(), name="user-login"),
