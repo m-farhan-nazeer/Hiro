@@ -12,15 +12,15 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-from pathlib import Path
-import os
-
-# NEW: load .env
-from dotenv import load_dotenv
-load_dotenv()  # reads .env from the project root
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Add the mlops directory to Python path so Django can import it
+MLOPS_DIR = BASE_DIR.parent / 'mlops'
+if str(MLOPS_DIR) not in sys.path:
+    sys.path.insert(0, str(MLOPS_DIR))
 
 
 # Quick-start development settings - unsuitable for production
@@ -37,6 +37,12 @@ ALLOWED_HOSTS = []
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
 ]
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:5173",
+]
+
+CORS_ALLOW_CREDENTIALS = True
 
 # Application definition
 

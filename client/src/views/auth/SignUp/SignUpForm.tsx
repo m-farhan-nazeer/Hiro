@@ -46,13 +46,24 @@ const SignUpForm = (props: SignUpFormProps) => {
     ) => {
         const { userName, password, email } = values
         setSubmitting(true)
-        const result = await signUp({ userName, password, email })
+        try {
+            console.log('[SignUpForm] Calling signUp...')
+            const result = await signUp({ userName, password, email })
+            console.log('[SignUpForm] signUp returned:', result)
 
-        if (result?.status === 'failed') {
-            setMessage(result.message)
+            if (result?.status === 'failed') {
+                setMessage(result.message)
+            } else if (result?.status === 'success') {
+                // Success - navigation should happen in useAuth hook
+                console.log('[SignUpForm] Signup successful, should redirect')
+            }
+        } catch (e) {
+            console.error('[SignUpForm] Error in onSignUp:', e)
+            setMessage((e as Error).message)
+        } finally {
+            console.log('[SignUpForm] Setting submitting to false')
+            setSubmitting(false)
         }
-
-        setSubmitting(false)
     }
 
     return (

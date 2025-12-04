@@ -3,17 +3,29 @@ export type SignInCredential = {
     password: string
 }
 
-export type SignInResponse = {
-    token: string
-    user: {
-        userName: string
-        authority: string[]
-        avatar: string
-        email: string
-    }
+// Backend (Django) auth types
+export type BackendUserProfile = {
+    telephone: string
+    avatar: string | null
+    department: string
+    position: string
+    language: string
+    timezone: string
+    password_last_changed: string | null
 }
 
-export type SignUpResponse = SignInResponse
+export type BackendUser = {
+    id: number
+    username: string
+    first_name: string
+    last_name: string
+    email: string
+    profile: BackendUserProfile
+}
+
+export type SignInResponse = BackendUser
+
+export type SignUpResponse = BackendUser
 
 export type SignUpCredential = {
     userName: string

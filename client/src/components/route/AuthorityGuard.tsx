@@ -12,6 +12,15 @@ const AuthorityGuard = (props: AuthorityGuardProps) => {
 
     const roleMatched = useAuthority(userAuthority, authority)
 
+    // Debug logging
+    if (!roleMatched) {
+        console.log('[AuthorityGuard] Access denied:', {
+            userAuthority,
+            authority,
+            roleMatched,
+        })
+    }
+
     return <>{roleMatched ? children : <Navigate to="/access-denied" />}</>
 }
 
