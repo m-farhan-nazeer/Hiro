@@ -10,10 +10,11 @@ export async function apiGetProjectDashboardData<T>() {
 export async function apiGetProjectList<T, U extends Record<string, unknown>>(
     data: U
 ) {
+    // Django endpoint: /api/jobs/
     return ApiService.fetchData<T>({
-        url: '/project/list',
-        method: 'post',
-        data,
+        url: '/jobs/',
+        method: 'get',
+        // data is ignored for GET, but keeping for compatibility
     })
 }
 

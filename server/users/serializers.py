@@ -69,6 +69,10 @@ class UserRegisterSerializer(serializers.ModelSerializer):
             "language",
             "timezone",
         ]
+        extra_kwargs = {
+            "first_name": {"required": False, "allow_blank": True},
+            "last_name": {"required": False, "allow_blank": True},
+        }
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password_confirm"]:

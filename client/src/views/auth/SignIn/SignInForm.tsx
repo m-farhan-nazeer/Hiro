@@ -47,14 +47,17 @@ const SignInForm = (props: SignInFormProps) => {
     ) => {
         const { userName, password } = values
         setSubmitting(true)
+        try {
+            const result = await signIn({ userName, password })
 
-        const result = await signIn({ userName, password })
-
-        if (result?.status === 'failed') {
-            setMessage(result.message)
+            if (result?.status === 'failed') {
+                setMessage(result.message)
+            }
+        } catch (e) {
+            setMessage((e as Error).message)
+        } finally {
+            setSubmitting(false)
         }
-
-        setSubmitting(false)
     }
 
     return (

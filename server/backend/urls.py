@@ -45,8 +45,8 @@ urlpatterns = [
 
     # Users
     path("users/register/", RegisterView.as_view(), name="user-register"),
-    path("users/login/", LoginView.as_view(), name="user-login"),
-    path("users/logout/", LogoutView.as_view(), name="user-logout"),
+    path("users/login/", csrf_exempt(LoginView.as_view()), name="user-login"),
+    path("users/logout/", csrf_exempt(LogoutView.as_view()), name="user-logout"),
     path("users/me/", MeView.as_view(), name="user-me"),
     path("users/change-password/", ChangePasswordView.as_view(), name="user-change-password"),
     path("users/login-history/", LoginHistoryView.as_view(), name="user-login-history"),
