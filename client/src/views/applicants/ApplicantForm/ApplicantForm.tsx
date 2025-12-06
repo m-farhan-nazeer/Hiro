@@ -3,6 +3,7 @@ import { FormContainer, FormItem } from '@/components/ui/Form'
 import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import { createApplication } from '@/services/ApplicationService'
+import useQuery from '@/utils/hooks/useQuery'
 
 type ApplicantFormProps = {
     onSubmitted?: () => void
@@ -10,24 +11,29 @@ type ApplicantFormProps = {
 
 
 const ApplicantForm = ({ onSubmitted }: ApplicantFormProps) => {
+    const query = useQuery()
+    const jobParam = query.get('id') || query.get('job')
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
-    const [jobId, setJobId] = useState('')
     const [submitting, setSubmitting] = useState(false)
     const fileRef = useRef<HTMLInputElement | null>(null)
 
     const resetForm = () => {
         setName('')
         setEmail('')
-        setJobId('')
         if (fileRef.current) fileRef.current.value = ''
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault()
 
-        if (!name || !email || !jobId) {
-            alert('Please fill name, email and job id')
+        if (!name || !email) {
+            alert('Please fill name and email')
+            return
+        }
+
+        if (!jobParam) {
+            alert('Job id missing from link. Please open application from job page.')
             return
         }
 
@@ -43,7 +49,7 @@ const ApplicantForm = ({ onSubmitted }: ApplicantFormProps) => {
             await createApplication({
                 name,
                 email,
-                job: parseInt(jobId, 10),
+                job: parseInt(jobParam, 10),
                 resume_file: file
             })
             alert('Application submitted successfully')
@@ -78,14 +84,7 @@ const ApplicantForm = ({ onSubmitted }: ApplicantFormProps) => {
                     />
                 </FormItem>
 
-                <FormItem label="Job ID">
-                    <Input
-                        type="number"
-                        value={jobId}
-                        onChange={(e: any) => setJobId(e.target.value)}
-                        placeholder="1"
-                    />
-                </FormItem>
+                {/* Job ID is provided via the application link (query string). */}
 
                 <FormItem label="Resume (PDF)">
                     <input
