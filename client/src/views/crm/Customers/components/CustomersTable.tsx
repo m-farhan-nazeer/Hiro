@@ -2,8 +2,10 @@ import { useEffect, useCallback, useMemo } from 'react'
 import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
 import DataTable from '@/components/shared/DataTable'
+import Select from '@/components/ui/Select'
 import {
     getApplications,
+    updateApplicationStatus,
     setTableData,
     setSelectedCustomer,
     setDrawerOpen,
@@ -18,6 +20,7 @@ import { Link } from 'react-router-dom'
 import dayjs from 'dayjs'
 import cloneDeep from 'lodash/cloneDeep'
 import type { OnSortParam, ColumnDef } from '@/components/shared/DataTable'
+import type { SingleValue } from 'react-select'
 
 const statusColor: Record<string, string> = {
     hired: 'bg-emerald-500',
@@ -69,6 +72,18 @@ type CustomersTableProps = {
     jobId?: string | null
 }
 
+type StatusOption = {
+    value: string
+    label: string
+}
+
+const statusOptions: StatusOption[] = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'shortlisted', label: 'Shortlisted' },
+    { value: 'hired', label: 'Hired' },
+    { value: 'rejected', label: 'Rejected' },
+]
+
 const Customers = ({ jobId }: CustomersTableProps = {}) => {
     const dispatch = useAppDispatch()
     const data = useAppSelector((state) => state.crmCustomers.data.applicationList)
@@ -88,6 +103,23 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
         }))
     }, [dispatch, jobId, filterData.status])
 
+    const handleStatusChange = useCallback((applicationId: number, newStatus: string) => {
+        dispatch(updateApplicationStatus({ 
+            id: applicationId, 
+            status: newStatus,
+            jobId: jobId ? Number(jobId) : undefined,
+            currentStatus: filterData.status
+        })).then(() => {
+            // Refresh the list after update to get latest data
+            dispatch(getApplications({ 
+                jobId: jobId ? Number(jobId) : undefined, 
+                status: filterData.status 
+            }))
+        }).catch((error) => {
+            console.error('Failed to update application status:', error)
+        })
+    }, [dispatch, jobId, filterData.status])
+
     useEffect(() => {
         fetchData()
     }, [fetchData])
@@ -100,7 +132,7 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
     const columns: ColumnDef<Application>[] = useMemo(
         () => [
             {
-                header: 'Applicant Name',
+                header: 'Name',
                 accessorKey: 'applicant_name',
             },
             {
@@ -116,13 +148,23 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
                 accessorKey: 'status',
                 cell: (props) => {
                     const row = props.row.original
-                    const status = row.status || 'Pending'
+                    const status = row.status || 'pending'
+                    const currentOption = statusOptions.find(opt => opt.value === status) || statusOptions[0]
+                    
                     return (
-                        <div className="flex items-center">
-                            <Badge className={statusColor[status] || statusColor.Pending} />
-                            <span className="ml-2 rtl:mr-2 capitalize">
-                                {status}
-                            </span>
+                        <div className="flex items-center gap-2">
+                            {/* <Badge className={statusColor[status] || statusColor.pending} /> */}
+                            <Select<StatusOption>
+                                size="sm"
+                                className="min-w-[120px]"
+                                value={currentOption}
+                                options={statusOptions}
+                                onChange={(option: SingleValue<StatusOption>) => {
+                                    if (option && option.value !== status) {
+                                        handleStatusChange(row.id, option.value)
+                                    }
+                                }}
+                            />
                         </div>
                     )
                 },

@@ -38,7 +38,7 @@ const SalesDashboardHeader = () => {
                 <p>Welcome Back, Here's what's happening with your recruitment.</p>
             </div>
             <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                <DatePickerRange
+                {/* <DatePickerRange
                     value={[
                         dayjs.unix(startDate).toDate(),
                         dayjs.unix(endDate).toDate(),
@@ -47,10 +47,10 @@ const SalesDashboardHeader = () => {
                     size="sm"
                     onChange={handleDateChange}
                     disabled   //DISABLED FOR TESTING
-                />
-                <Button size="sm" icon={<HiOutlineFilter />} onClick={onFilter}>
+                /> */}
+                {/* <Button size="sm" icon={<HiOutlineFilter />} onClick={onFilter}>
                     Filter
-                </Button>
+                </Button> */}
             </div>
         </div>
     )

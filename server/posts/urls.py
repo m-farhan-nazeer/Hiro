@@ -14,4 +14,5 @@ urlpatterns = [
     path('api/applications/<int:pk>/', application_views.ApplicationRetrieveUpdateDestroyAPIView.as_view(), name='api_application_detail'),
     path('api/applications/<int:pk>/resume/', application_views.application_resume, name='api_application_resume'),
     path('api/crm/customers-statistic', application_views.CustomerStatisticAPIView.as_view(), name='api_crm_customers_statistic'),
+    path('api/sales/dashboard', application_views.SalesDashboardAPIView.as_view(), name='api_sales_dashboard'),
 ]

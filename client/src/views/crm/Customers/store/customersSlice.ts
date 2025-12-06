@@ -4,7 +4,7 @@ import {
     apPutCrmCustomer,
     apiGetCrmCustomersStatistic,
 } from '@/services/CrmService'
-import { listApplications } from '@/services/ApplicationService'
+import { listApplications, updateApplication } from '@/services/ApplicationService'
 import type { TableQueries } from '@/@types/common'
 
 type PersonalInfo = {
@@ -160,6 +160,14 @@ export const getApplications = createAsyncThunk(
     }
 )
 
+export const updateApplicationStatus = createAsyncThunk(
+    'crmCustomers/data/updateApplicationStatus',
+    async (params: { id: number; status: string; jobId?: string | number; currentStatus?: string }) => {
+        await updateApplication(params.id, { status: params.status })
+        return { id: params.id, status: params.status }
+    }
+)
+
 export const putCustomer = createAsyncThunk(
     'crmCustomers/data/putCustomer',
     async (data: Customer) => {
@@ -243,6 +251,17 @@ const customersSlice = createSlice({
                 state.loading = false
             })
             .addCase(getApplications.pending, (state) => {
+                state.loading = true
+            })
+            .addCase(updateApplicationStatus.fulfilled, (state, action) => {
+                // Update the application in the list
+                const index = state.applicationList.findIndex(app => app.id === action.payload.id)
+                if (index !== -1) {
+                    state.applicationList[index].status = action.payload.status
+                }
+                state.loading = false
+            })
+            .addCase(updateApplicationStatus.pending, (state) => {
                 state.loading = true
             })
     },

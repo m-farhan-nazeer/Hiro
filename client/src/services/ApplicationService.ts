@@ -99,11 +99,19 @@ export async function updateApplication(id: string | number, applicationData: {
 		formData.append('resume_file', applicationData.resume_file);
 	}
 
+	// Use PATCH for partial updates (only status), PUT for full updates
+	const isStatusOnly = applicationData.status !== undefined && 
+		Object.keys(applicationData).filter(key => applicationData[key as keyof typeof applicationData] !== undefined).length === 1;
+	const method = isStatusOnly ? 'PATCH' : 'PUT';
+	
 	const res = await fetch(`${BASE_URL}${id}/`, {
-		method: 'PUT',
+		method: method,
 		body: formData,
 	});
-	if (!res.ok) throw new Error('Failed to update application');
+	if (!res.ok) {
+		const errorData = await res.json().catch(() => ({ error: 'Failed to update application' }));
+		throw new Error(errorData.error || errorData.message || 'Failed to update application');
+	}
 	return res.json();
 }
 

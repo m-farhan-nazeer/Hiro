@@ -11,6 +11,7 @@ import logging
 from .models import Application
 from .serializers import ApplicationSerializer, ApplicationCreateSerializer
 from applicants.models import Applicant
+from posts.models import Job
 
 logger = logging.getLogger(__name__)
 
@@ -207,6 +208,133 @@ class CustomerStatisticAPIView(APIView):
                 'value': hired_count,
                 'growShrink': round(hired_growth, 2)
             }
+        })
+
+
+class SalesDashboardAPIView(APIView):
+    """
+    POST /api/sales/dashboard -> Get dashboard data
+    """
+    def post(self, request):
+        # Statistics
+        total_applicants = Applicant.objects.filter(
+            applications__isnull=False
+        ).distinct().count()
+        active_jobs = Job.objects.filter(status='active').count()
+        hired_count = Application.objects.filter(status='hired').count()
+        
+        # Calculate growth (last 3 months vs previous 3 months)
+        three_months_ago = (timezone.now() - timedelta(days=90)).date()
+        six_months_ago = (timezone.now() - timedelta(days=180)).date()
+        
+        recent_applicants = Applicant.objects.filter(
+            applications__date__gte=three_months_ago
+        ).distinct().count()
+        previous_applicants = Applicant.objects.filter(
+            applications__date__gte=six_months_ago,
+            applications__date__lt=three_months_ago
+        ).distinct().count()
+        applicants_growth = ((recent_applicants - previous_applicants) / previous_applicants * 100) if previous_applicants > 0 else 0
+        
+        recent_jobs = Job.objects.filter(date__gte=three_months_ago).count()
+        previous_jobs = Job.objects.filter(
+            date__gte=six_months_ago,
+            date__lt=three_months_ago
+        ).count()
+        jobs_growth = ((recent_jobs - previous_jobs) / previous_jobs * 100) if previous_jobs > 0 else 0
+        
+        recent_hired = Application.objects.filter(status='hired', date__gte=three_months_ago).count()
+        previous_hired = Application.objects.filter(
+            status='hired',
+            date__gte=six_months_ago,
+            date__lt=three_months_ago
+        ).count()
+        hired_growth = ((recent_hired - previous_hired) / previous_hired * 100) if previous_hired > 0 else 0
+        
+        # Latest applicants (last 4 applications)
+        latest_applications = Application.objects.select_related('applicant', 'job').order_by('-date')[:4]
+        latest_applicant_data = [{
+            'name': app.applicant.name,
+            'email': app.applicant.email,
+            'status': app.status,
+            'telephone': app.applicant.telephone or '',
+            'job': app.job.title,
+            'score': float(app.score) if app.score else 0
+        } for app in latest_applications]
+        
+        # Latest jobs (last 3 jobs with applicant count)
+        latest_jobs = Job.objects.annotate(
+            total_applicants=Count('applications')
+        ).order_by('-date')[:3]
+        job_data = [{
+            'title': job.title,
+            'pay': 0,  # Not in model, using placeholder
+            'description': job.description,
+            'status': job.status,
+            'date': job.date.isoformat(),
+            'jobtype': job.jobtype,
+            'jobtime': job.jobtime,
+            'shift': job.shift or '',
+            'reqskills': job.required_skills.split(',') if job.required_skills else [],
+            'domain': job.domain or '',
+            'totalapplicants': job.total_applicants
+        } for job in latest_jobs]
+        
+        # Sales report data (applications over last 6 months by month)
+        months = []
+        application_counts = []
+        for i in range(6):
+            month_start = (timezone.now() - timedelta(days=30 * (6 - i))).date()
+            month_end = month_start + timedelta(days=30)
+            month_name = month_start.strftime('%b')
+            months.append(month_name)
+            count = Application.objects.filter(date__gte=month_start, date__lt=month_end).count()
+            application_counts.append(count)
+        
+        # Recruitment by categories (by application status: hired, shortlisted, pending, rejected)
+        status_counts = Application.objects.values('status').annotate(
+            count=Count('id')
+        )
+        
+        # Create a dictionary for easy lookup
+        status_dict = {item['status']: item['count'] for item in status_counts}
+        
+        # Order: hired, shortlisted, pending, rejected
+        recruitment_by_categories = {
+            'labels': ['Hired', 'Shortlisted', 'Pending', 'Rejected'],
+            'data': [
+                status_dict.get('hired', 0),
+                status_dict.get('shortlisted', 0),
+                status_dict.get('pending', 0),
+                status_dict.get('rejected', 0)
+            ]
+        }
+        
+        return Response({
+            'statisticData': {
+                'revenue': {
+                    'value': total_applicants,
+                    'growShrink': round(applicants_growth, 2)
+                },
+                'orders': {
+                    'value': active_jobs,
+                    'growShrink': round(jobs_growth, 2)
+                },
+                'purchases': {
+                    'value': hired_count,
+                    'growShrink': round(hired_growth, 2)
+                }
+            },
+            'latestApplicantData': latest_applicant_data,
+            'jobData': job_data,
+            'salesReportData': {
+                'series': [{
+                    'name': 'Applications',
+                    'data': application_counts
+                }],
+                'categories': months
+            },
+            'recruitmentByCategoriesData': recruitment_by_categories
         })
 
 
