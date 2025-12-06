@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'posts',
     'applicants', 
+    'applications',
     'users',
     
 ]
@@ -95,26 +96,26 @@ WSGI_APPLICATION = "backend.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": "posts",
-#         "USER":"postgres",
-#         "PASSWORD":"affan",
-#         "HOST":"localhost"
-#     }
-# }
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("PGDATABASE", "posts"),
-        "USER": os.getenv("PGUSER", "postgres"),
-        "PASSWORD": os.getenv("PGPASSWORD", ""),
-        "HOST": os.getenv("PGHOST", "localhost"),
-        "PORT": os.getenv("PGPORT", "5432"),
+        "NAME": "posts",
+        "USER":"postgres",
+        "PASSWORD":"affan",
+        "HOST":"localhost"
     }
 }
+
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": os.getenv("PGDATABASE", "posts"),
+#         "USER": os.getenv("PGUSER", "postgres"),
+#         "PASSWORD": os.getenv("PGPASSWORD", ""),
+#         "HOST": os.getenv("PGHOST", "localhost"),
+#         "PORT": os.getenv("PGPORT", "5432"),
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

@@ -3,81 +3,120 @@ from .models import Applicant
 
 
 class ApplicantSerializer(serializers.ModelSerializer):
-    # Used for uploading the resume file (frontend / Postman)
-    resume_file = serializers.FileField(
-        write_only=True,
-        required=False,
-        allow_null=True,
-    )
+    # Enriched fields from related applications (when filtering by job)
+    status = serializers.SerializerMethodField()
+    score = serializers.SerializerMethodField()
+    jobAppliedFor = serializers.SerializerMethodField()
+    appliedDate = serializers.SerializerMethodField()
+    has_resume = serializers.SerializerMethodField()
+    resume_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Applicant
         fields = [
             "id",
             "name",
-            "status",
             "email",
             "telephone",
-            "job_applied_for",
-            "applied_date",
-            "score",
             "prior_experience",
             "source",
             "skill_set",
-            "resume",       # stored as BLOB (bytea) in DB
-            "resume_file",  # virtual field for uploads
+            "status",
+            "score",
+            "jobAppliedFor",
+            "appliedDate",
+            "has_resume",
+            "resume_url",
         ]
-        extra_kwargs = {
-            # Don't allow client to send raw bytes directly
-            "resume": {"read_only": True},
-        }
 
-    def create(self, validated_data):
-        # Get uploaded file (if any)
-        resume_file = validated_data.pop("resume_file", None)
-
-        if resume_file:
-            # Read file content as bytes and store in BinaryField
-            validated_data["resume"] = resume_file.read()
-
-        return super().create(validated_data)
-
-    def update(self, instance, validated_data):
-        # Handle resume file on update as well
-        resume_file = validated_data.pop("resume_file", None)
-
-        if resume_file:
-            instance.resume = resume_file.read()
-
-        # Let DRF handle other fields
-        return super().update(instance, validated_data)
-
-    def to_representation(self, instance):
-        """
-        Control how resume appears in API output:
-        - Do NOT return raw bytes
-        - Expose has_resume + resume_url
-        """
-        data = super().to_representation(instance)
-
-        # Remove raw bytes field from output if present
-        data.pop("resume", None)
-
-        has_resume = bool(instance.resume)
-        data["has_resume"] = has_resume
-
-        # Build URL for resume endpoint if resume exists
-        if has_resume:
-            request = self.context.get("request")
-            if request is not None:
-                # absolute URL
-                data["resume_url"] = request.build_absolute_uri(
-                    f"/applicants/{instance.pk}/resume/"
-                )
+    def get_status(self, obj):
+        """Get status from the most recent application, or from job-filtered application if job_id is in query params"""
+        request = self.context.get("request")
+        if request:
+            job_id = request.query_params.get('job', None)
+            if job_id:
+                # Get application for this specific job
+                application = obj.applications.filter(job_id=job_id).first()
+                if application:
+                    return application.status
             else:
-                # fallback relative URL
-                data["resume_url"] = f"/applicants/{instance.pk}/resume/"
-        else:
-            data["resume_url"] = None
+                # Get most recent application
+                application = obj.applications.order_by('-date').first()
+                if application:
+                    return application.status
+        return None
 
-        return data
+    def get_score(self, obj):
+        """Get score from the most recent application, or from job-filtered application if job_id is in query params"""
+        request = self.context.get("request")
+        if request:
+            job_id = request.query_params.get('job', None)
+            if job_id:
+                application = obj.applications.filter(job_id=job_id).first()
+                if application:
+                    return str(application.score) if application.score else None
+            else:
+                application = obj.applications.order_by('-date').first()
+                if application:
+                    return str(application.score) if application.score else None
+        return None
+
+    def get_jobAppliedFor(self, obj):
+        """Get job title from the most recent application, or from job-filtered application if job_id is in query params"""
+        request = self.context.get("request")
+        if request:
+            job_id = request.query_params.get('job', None)
+            if job_id:
+                application = obj.applications.filter(job_id=job_id).first()
+                if application:
+                    return application.job.title
+            else:
+                application = obj.applications.order_by('-date').first()
+                if application:
+                    return application.job.title
+        return None
+
+    def get_appliedDate(self, obj):
+        """Get applied date from the most recent application, or from job-filtered application if job_id is in query params"""
+        request = self.context.get("request")
+        if request:
+            job_id = request.query_params.get('job', None)
+            if job_id:
+                application = obj.applications.filter(job_id=job_id).first()
+                if application:
+                    return application.date.isoformat()
+            else:
+                application = obj.applications.order_by('-date').first()
+                if application:
+                    return application.date.isoformat()
+        return None
+
+    def get_has_resume(self, obj):
+        """Check if applicant has a resume in any application"""
+        request = self.context.get("request")
+        if request:
+            job_id = request.query_params.get('job', None)
+            if job_id:
+                application = obj.applications.filter(job_id=job_id).first()
+                if application:
+                    return bool(application.resume)
+            else:
+                application = obj.applications.order_by('-date').first()
+                if application:
+                    return bool(application.resume)
+        return False
+
+    def get_resume_url(self, obj):
+        """Get resume URL from the most recent application, or from job-filtered application if job_id is in query params"""
+        request = self.context.get("request")
+        if request:
+            job_id = request.query_params.get('job', None)
+            if job_id:
+                application = obj.applications.filter(job_id=job_id).first()
+                if application and application.resume:
+                    return request.build_absolute_uri(f"/api/applications/{application.pk}/resume/")
+            else:
+                application = obj.applications.order_by('-date').first()
+                if application and application.resume:
+                    return request.build_absolute_uri(f"/api/applications/{application.pk}/resume/")
+        return None

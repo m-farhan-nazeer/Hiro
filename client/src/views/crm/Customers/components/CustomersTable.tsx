@@ -3,14 +3,14 @@ import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
 import DataTable from '@/components/shared/DataTable'
 import {
-    getCustomers,
+    getApplications,
     setTableData,
     setSelectedCustomer,
     setDrawerOpen,
     useAppDispatch,
     useAppSelector,
     Customer,
-    Applicant
+    Application
 } from '../store'
 import useThemeClass from '@/utils/hooks/useThemeClass'
 import CustomerEditDialog from './CustomerEditDialog'
@@ -20,6 +20,10 @@ import cloneDeep from 'lodash/cloneDeep'
 import type { OnSortParam, ColumnDef } from '@/components/shared/DataTable'
 
 const statusColor: Record<string, string> = {
+    hired: 'bg-emerald-500',
+    shortlisted: 'bg-blue-500',
+    pending: 'bg-yellow-500',
+    rejected: 'bg-red-500',
     Hired: 'bg-emerald-500',
     Shortlisted: 'bg-blue-500',
     Pending: 'bg-yellow-500',
@@ -61,9 +65,13 @@ const NameColumn = ({ row }: { row: Customer }) => {
     )
 }
 
-const Customers = () => {
+type CustomersTableProps = {
+    jobId?: string | null
+}
+
+const Customers = ({ jobId }: CustomersTableProps = {}) => {
     const dispatch = useAppDispatch()
-    const data = useAppSelector((state) => state.crmCustomers.data.applicantList)
+    const data = useAppSelector((state) => state.crmCustomers.data.applicationList)
     const loading = useAppSelector((state) => state.crmCustomers.data.loading)
     const filterData = useAppSelector(
         (state) => state.crmCustomers.data.filterData
@@ -74,42 +82,46 @@ const Customers = () => {
     )
 
     const fetchData = useCallback(() => {
-        dispatch(getCustomers({ pageIndex, pageSize, sort, query, filterData }))
-    }, [pageIndex, pageSize, sort, query, filterData, dispatch])
+        dispatch(getApplications({ 
+            jobId: jobId ? Number(jobId) : undefined, 
+            status: filterData.status 
+        }))
+    }, [dispatch, jobId, filterData.status])
 
     useEffect(() => {
         fetchData()
-    }, [fetchData, pageIndex, pageSize, sort, filterData])
+    }, [fetchData])
 
     const tableData = useMemo(
         () => ({ pageIndex, pageSize, sort, query, total }),
         [pageIndex, pageSize, sort, query, total]
     )
 
-    const columns: ColumnDef<Applicant>[] = useMemo(
+    const columns: ColumnDef<Application>[] = useMemo(
         () => [
             {
-                header: 'Name',
-                accessorKey: 'name',
-                // cell: (props) => {
-                //     const row = props.row.original
-                //     return <NameColumn row={row} />
-                // },
+                header: 'Applicant Name',
+                accessorKey: 'applicant_name',
             },
             {
                 header: 'Email',
-                accessorKey: 'email',
+                accessorKey: 'applicant_email',
+            },
+            {
+                header: 'Job Title',
+                accessorKey: 'job_title',
             },
             {
                 header: 'Status',
                 accessorKey: 'status',
                 cell: (props) => {
                     const row = props.row.original
+                    const status = row.status || 'Pending'
                     return (
                         <div className="flex items-center">
-                            <Badge className={statusColor[row.status]} />
+                            <Badge className={statusColor[status] || statusColor.Pending} />
                             <span className="ml-2 rtl:mr-2 capitalize">
-                                {row.status}
+                                {status}
                             </span>
                         </div>
                     )
@@ -118,14 +130,42 @@ const Customers = () => {
             {
                 header: 'Score',
                 accessorKey: 'score',
-            },
-            {
-                header: 'Job',
-                accessorKey: 'jobAppliedFor',
+                cell: (props) => {
+                    const row = props.row.original
+                    return <span>{row.score || 'N/A'}</span>
+                },
             },
             {
                 header: 'Date',
-                accessorKey: 'appliedDate',
+                accessorKey: 'date',
+                cell: (props) => {
+                    const row = props.row.original
+                    return (
+                        <div className="flex items-center">
+                            {dayjs(row.date).format('MM/DD/YYYY')}
+                        </div>
+                    )
+                },
+            },
+            {
+                header: 'Resume',
+                accessorKey: 'has_resume',
+                cell: (props) => {
+                    const row = props.row.original
+                    if (row.has_resume && row.resume_url) {
+                        return (
+                            <a
+                                href={row.resume_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:underline"
+                            >
+                                View Resume
+                            </a>
+                        )
+                    }
+                    return <span className="text-gray-400">No Resume</span>
+                },
             },
             // {
             //     header: 'Last online',
