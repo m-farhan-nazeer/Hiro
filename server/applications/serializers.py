@@ -3,12 +3,9 @@ from rest_framework.exceptions import ValidationError
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError as DjangoValidationError
 import logging
-<<<<<<< HEAD
-=======
 import os
 import tempfile
 
->>>>>>> e7b75fe (Implement resume scoring pipeline integration)
 from .models import Application
 from applicants.models import Applicant
 from posts.models import Job
@@ -54,31 +51,18 @@ class ApplicationCreateSerializer(serializers.Serializer):
         Create or get applicant by email, then create application.
         Handles all the logic for applicant lookup/creation and application creation.
         """
-<<<<<<< HEAD
-        email = validated_data['email']
-        name = validated_data['name']
-        job = validated_data['job']
-        resume_file = validated_data['resume_file']
-        score = validated_data.get('score', 0)
-        status = validated_data.get('status', 'pending')
-=======
         email = validated_data["email"]
         name = validated_data["name"]
         job = validated_data["job"]
         resume_file = validated_data["resume_file"]
         score = validated_data.get("score", 0)
         status = validated_data.get("status", "pending")
->>>>>>> e7b75fe (Implement resume scoring pipeline integration)
 
         try:
             # Get or create applicant by email
             applicant, created = Applicant.objects.get_or_create(
                 email=email,
-<<<<<<< HEAD
-                defaults={'name': name}
-=======
                 defaults={"name": name},
->>>>>>> e7b75fe (Implement resume scoring pipeline integration)
             )
             
             logger.info(
@@ -98,13 +82,8 @@ class ApplicationCreateSerializer(serializers.Serializer):
                 )
                 raise ValidationError(
                     {
-<<<<<<< HEAD
-                        'error': 'Application already exists',
-                        'message': f'You have already applied for this job position.'
-=======
                         "error": "Application already exists",
                         "message": "You have already applied for this job position.",
->>>>>>> e7b75fe (Implement resume scoring pipeline integration)
                     }
                 )
 
@@ -112,25 +91,15 @@ class ApplicationCreateSerializer(serializers.Serializer):
             resume_bytes = resume_file.read()
             
             if not resume_bytes:
-<<<<<<< HEAD
-                raise ValidationError({'resume_file': 'Resume file is empty'})
-
-            # Create application with default values
-=======
                 raise ValidationError({"resume_file": "Resume file is empty"})
 
             # 1) Create application first so resume is stored in DB
->>>>>>> e7b75fe (Implement resume scoring pipeline integration)
             application = Application.objects.create(
                 applicant=applicant,
                 job=job,
                 resume=resume_bytes,
                 score=score,
-<<<<<<< HEAD
-                status=status
-=======
                 status=status,
->>>>>>> e7b75fe (Implement resume scoring pipeline integration)
             )
 
             logger.info(
@@ -138,8 +107,6 @@ class ApplicationCreateSerializer(serializers.Serializer):
                 f"Applicant: {applicant.email}, Job: {job.id}"
             )
 
-<<<<<<< HEAD
-=======
             # 2) Run MLOps pipeline to compute score
             tmp_path = None
             try:
@@ -214,26 +181,17 @@ class ApplicationCreateSerializer(serializers.Serializer):
                     except OSError:
                         logger.warning("Failed to remove temp resume file %s", tmp_path)
 
->>>>>>> e7b75fe (Implement resume scoring pipeline integration)
             return application
 
         except IntegrityError as e:
             logger.error(f"Integrity error creating application: {str(e)}")
             raise ValidationError(
-<<<<<<< HEAD
-                {'error': 'Database integrity error', 'message': str(e)}
-=======
                 {"error": "Database integrity error", "message": str(e)}
->>>>>>> e7b75fe (Implement resume scoring pipeline integration)
             )
         except Exception as e:
             logger.error(f"Unexpected error creating application: {str(e)}")
             raise ValidationError(
-<<<<<<< HEAD
-                {'error': 'Failed to create application', 'message': str(e)}
-=======
                 {"error": "Failed to create application", "message": str(e)}
->>>>>>> e7b75fe (Implement resume scoring pipeline integration)
             )
 
     def to_representation(self, instance):
@@ -325,7 +283,3 @@ class ApplicationSerializer(serializers.ModelSerializer):
             data["resume_url"] = None
 
         return data
-<<<<<<< HEAD
-
-=======
->>>>>>> e7b75fe (Implement resume scoring pipeline integration)
