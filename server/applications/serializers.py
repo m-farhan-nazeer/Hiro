@@ -181,6 +181,25 @@ class ApplicationCreateSerializer(serializers.Serializer):
                     except OSError:
                         logger.warning("Failed to remove temp resume file %s", tmp_path)
 
+            # 3) Trigger background profile extraction
+            try:
+                from applicants.tasks import BackgroundTask, extract_profile_async
+                
+                logger.info(
+                    f"Triggering background profile extraction for applicant {applicant.id}"
+                )
+                BackgroundTask.run(
+                    extract_profile_async,
+                    applicant_id=applicant.id,
+                    application_id=application.id
+                )
+            except Exception as e:
+                # Don't fail application creation if extraction fails
+                logger.error(
+                    f"Failed to trigger background extraction: {str(e)}",
+                    exc_info=True
+                )
+
             return application
 
         except IntegrityError as e:
