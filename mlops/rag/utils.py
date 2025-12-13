@@ -1,8 +1,8 @@
 # utils.py
 import os
 from langchain_community.document_loaders import PyPDFLoader, TextLoader, UnstructuredWordDocumentLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_core.documents import Document
 from langchain_qdrant import QdrantVectorStore
 from sklearn.metrics.pairwise import cosine_similarity
 import numpy as np
@@ -78,6 +78,9 @@ def store_job_description(job_text: str):
         collection_name=JOB_COLLECTION,
         url=os.getenv("QDRANT_URL"),
         api_key=os.getenv("QDRANT_API_KEY"),
+        # If collection already exists with a different vector size,
+        # drop and recreate it so embeddings stay compatible.
+        force_recreate=True,
     )
 
     print("✅ Job Description stored successfully.")

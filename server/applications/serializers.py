@@ -3,6 +3,9 @@ from rest_framework.exceptions import ValidationError
 from django.db import IntegrityError
 from django.core.exceptions import ValidationError as DjangoValidationError
 import logging
+import os
+import tempfile
+
 from .models import Application
 from applicants.models import Applicant
 from posts.models import Job
@@ -48,18 +51,18 @@ class ApplicationCreateSerializer(serializers.Serializer):
         Create or get applicant by email, then create application.
         Handles all the logic for applicant lookup/creation and application creation.
         """
-        email = validated_data['email']
-        name = validated_data['name']
-        job = validated_data['job']
-        resume_file = validated_data['resume_file']
-        score = validated_data.get('score', 0)
-        status = validated_data.get('status', 'pending')
+        email = validated_data["email"]
+        name = validated_data["name"]
+        job = validated_data["job"]
+        resume_file = validated_data["resume_file"]
+        score = validated_data.get("score", 0)
+        status = validated_data.get("status", "pending")
 
         try:
             # Get or create applicant by email
             applicant, created = Applicant.objects.get_or_create(
                 email=email,
-                defaults={'name': name}
+                defaults={"name": name},
             )
             
             logger.info(
@@ -79,8 +82,8 @@ class ApplicationCreateSerializer(serializers.Serializer):
                 )
                 raise ValidationError(
                     {
-                        'error': 'Application already exists',
-                        'message': f'You have already applied for this job position.'
+                        "error": "Application already exists",
+                        "message": "You have already applied for this job position.",
                     }
                 )
 
@@ -88,15 +91,15 @@ class ApplicationCreateSerializer(serializers.Serializer):
             resume_bytes = resume_file.read()
             
             if not resume_bytes:
-                raise ValidationError({'resume_file': 'Resume file is empty'})
+                raise ValidationError({"resume_file": "Resume file is empty"})
 
-            # Create application with default values
+            # 1) Create application first so resume is stored in DB
             application = Application.objects.create(
                 applicant=applicant,
                 job=job,
                 resume=resume_bytes,
                 score=score,
-                status=status
+                status=status,
             )
 
             logger.info(
@@ -104,17 +107,91 @@ class ApplicationCreateSerializer(serializers.Serializer):
                 f"Applicant: {applicant.email}, Job: {job.id}"
             )
 
+            # 2) Run MLOps pipeline to compute score
+            tmp_path = None
+            try:
+                # Import MLOps utils lazily so missing ML deps
+                # won't break Django startup; failures are logged.
+                try:
+                    from rag.utils import (
+                        store_job_description,
+                        rank_resume_against_job,
+                    )
+                except ImportError as e:
+                    logger.error(
+                        "MLOps dependencies not available, skipping scoring for "
+                        "application %s: %s",
+                        application.id,
+                        str(e),
+                        exc_info=True,
+                    )
+                    return application
+
+                # Build job description text for vector store
+                job_text_parts = [
+                    job.title or "",
+                    job.description or "",
+                    f"Status: {job.status}" if getattr(job, "status", None) else "",
+                    f"Job type: {job.jobtype}" if getattr(job, "jobtype", None) else "",
+                    f"Job time: {job.jobtime}" if getattr(job, "jobtime", None) else "",
+                    f"Shift: {job.shift}" if getattr(job, "shift", None) else "",
+                    f"Skills: {job.required_skills}" if getattr(job, "required_skills", None) else "",
+                    f"Domain: {job.domain}" if getattr(job, "domain", None) else "",
+                ]
+                job_text = "\n\n".join([p for p in job_text_parts if p])
+
+                if job_text:
+                    try:
+                        store_job_description(job_text)
+                    except Exception as e:
+                        logger.error(
+                            "Failed to store job description in vector DB for application %s: %s",
+                            application.id,
+                            str(e),
+                            exc_info=True,
+                        )
+
+                # Write resume bytes to a temporary file for ranking
+                with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_file:
+                    tmp_file.write(resume_bytes)
+                    tmp_path = tmp_file.name
+
+                try:
+                    generated_score = rank_resume_against_job(tmp_path)
+                except Exception as e:
+                    logger.error(
+                        "Failed to generate score for application %s: %s",
+                        application.id,
+                        str(e),
+                        exc_info=True,
+                    )
+                else:
+                    # Update application with generated score
+                    application.score = generated_score
+                    application.save(update_fields=["score"])
+                    logger.info(
+                        "Updated application %s with generated score: %s",
+                        application.id,
+                        generated_score,
+                    )
+            finally:
+                if tmp_path and os.path.exists(tmp_path):
+                    try:
+                        os.remove(tmp_path)
+                    except OSError:
+                        logger.warning("Failed to remove temp resume file %s", tmp_path)
+
             return application
 
         except IntegrityError as e:
             logger.error(f"Integrity error creating application: {str(e)}")
             raise ValidationError(
-                {'error': 'Database integrity error', 'message': str(e)}
+                {"error": "Database integrity error", "message": str(e)}
             )
         except Exception as e:
             logger.error(f"Unexpected error creating application: {str(e)}")
             raise ValidationError(
-                {'error': 'Failed to create application', 'message': str(e)}
+                {"error": "Failed to create application", "message": str(e)}
             )
 
     def to_representation(self, instance):
@@ -206,4 +283,3 @@ class ApplicationSerializer(serializers.ModelSerializer):
             data["resume_url"] = None
 
         return data
-

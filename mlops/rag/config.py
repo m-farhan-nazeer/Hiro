@@ -2,6 +2,8 @@
 import os
 from dotenv import load_dotenv, find_dotenv
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_openai import OpenAIEmbeddings
+
 from qdrant_client import QdrantClient
 
 load_dotenv(find_dotenv())
@@ -19,8 +21,12 @@ QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 # -----------------------------
 # EMBEDDINGS + QDRANT CLIENT
 # -----------------------------
+# def get_embedding_model():
+#     return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+
 def get_embedding_model():
-    return HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
+    return OpenAIEmbeddings(model="text-embedding-3-large")
+
 
 def get_qdrant_client():
     client = QdrantClient(
