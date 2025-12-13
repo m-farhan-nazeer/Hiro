@@ -179,7 +179,7 @@ export const putCustomer = createAsyncThunk(
 export const initialTableData: TableQueries = {
     total: 0,
     pageIndex: 1,
-    pageSize:5,
+    pageSize: 10,
     query: '',
     sort: {
         order: '',

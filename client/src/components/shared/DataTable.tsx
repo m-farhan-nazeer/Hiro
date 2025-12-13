@@ -116,13 +116,13 @@ function _DataTable<T>(
         onSelectChange,
         onSort,
         // pageSizes = [10, 25, 50, 100],
-        pageSizes = [5, 10, 15, 20],
+        pageSizes = [10, 20, 50, 100],
         selectable = false,
         skeletonAvatarProps,
         pagingData = {
             total: 0,
             pageIndex: 1,
-            pageSize: 5,
+            pageSize: 10,
         },
     } = props
 
@@ -265,9 +265,9 @@ function _DataTable<T>(
                                             <div
                                                 className={classNames(
                                                     header.column.getCanSort() &&
-                                                        'cursor-pointer select-none point',
+                                                    'cursor-pointer select-none point',
                                                     loading &&
-                                                        'pointer-events-none'
+                                                    'pointer-events-none'
                                                 )}
                                                 onClick={header.column.getToggleSortingHandler()}
                                             >
@@ -323,12 +323,17 @@ function _DataTable<T>(
                 )}
             </Table>
             <div className="flex items-center justify-between mt-4">
-                <Pagination
-                    pageSize={pageSize}
-                    currentPage={pageIndex}
-                    total={20}
-                    onChange={handlePaginationChange}
-                />
+                <div className="flex items-center gap-4">
+                    <Pagination
+                        pageSize={pageSize}
+                        currentPage={pageIndex}
+                        total={total}
+                        onChange={handlePaginationChange}
+                    />
+                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                        Showing {Math.min((pageIndex - 1) * pageSize + 1, total)}–{Math.min(pageIndex * pageSize, total)} of {total} applicants
+                    </div>
+                </div>
                 <div style={{ minWidth: 130 }}>
                     <Select
                         size="sm"
