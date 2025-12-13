@@ -12,7 +12,11 @@ import CustomerTableFilter from './CustomerTableFilter'
 import cloneDeep from 'lodash/cloneDeep'
 import type { TableQueries } from '@/@types/common'
 
-const CustomersTableTools = () => {
+type CustomersTableToolsProps = {
+    jobId?: string | null
+}
+
+const CustomersTableTools = ({ jobId }: CustomersTableToolsProps = {}) => {
     const dispatch = useAppDispatch()
 
     const inputRef = useRef<HTMLInputElement>(null)
@@ -56,7 +60,7 @@ const CustomersTableTools = () => {
                     ref={inputRef}
                     onInputChange={handleInputChange}
                 />
-                <CustomerTableFilter />
+                <CustomerTableFilter jobId={jobId} />
             </div>
             <div className="mb-4">
                 <Button size="sm" onClick={onClearAll}>

@@ -4,6 +4,7 @@ import {
     apPutCrmCustomer,
     apiGetCrmCustomersStatistic,
 } from '@/services/CrmService'
+import { listApplications, updateApplication } from '@/services/ApplicationService'
 import type { TableQueries } from '@/@types/common'
 
 type PersonalInfo = {
@@ -43,15 +44,33 @@ type Subscription = {
 }
 
 export type Applicant = {
+    id: number
     name: string
-    status: string
     email: string
     telephone: string
-    location: string
-    jobAppliedFor: string
-    appliedDate: string
-    score: number
-    skillset: string[]
+    prior_experience?: string
+    source?: string
+    skill_set?: string
+    status?: string | null
+    score?: string | null
+    jobAppliedFor?: string | null
+    appliedDate?: string | null
+    has_resume?: boolean
+    resume_url?: string | null
+}
+
+export type Application = {
+    id: number
+    applicant: number
+    applicant_name: string
+    applicant_email: string
+    job: number
+    job_title: string
+    score: string | null
+    status: string
+    date: string
+    has_resume: boolean
+    resume_url: string | null
 }
 
 export type Customer = {
@@ -101,6 +120,7 @@ export type CustomersState = {
     statisticLoading: boolean
     // customerList: Customer[]
     applicantList: Applicant[]
+    applicationList: Application[]
     statisticData: Partial<CustomerStatistic>
     tableData: TableQueries
     filterData: Filter
@@ -127,6 +147,24 @@ export const getCustomers = createAsyncThunk(
             TableQueries
         >(data)
         return response.data
+    }
+)
+
+export const getApplications = createAsyncThunk(
+    'crmCustomers/data/getApplications',
+    async (params?: { jobId?: string | number; status?: string }) => {
+        const jobId = params?.jobId
+        const status = params?.status
+        const applications = await listApplications(jobId, status)
+        return applications as Application[]
+    }
+)
+
+export const updateApplicationStatus = createAsyncThunk(
+    'crmCustomers/data/updateApplicationStatus',
+    async (params: { id: number; status: string; jobId?: string | number; currentStatus?: string }) => {
+        await updateApplication(params.id, { status: params.status })
+        return { id: params.id, status: params.status }
     }
 )
 
@@ -158,6 +196,7 @@ const initialState: CustomersState = {
     statisticLoading: false,
     // customerList: [],
     applicantList: [],
+    applicationList: [],
     statisticData: {},
     tableData: initialTableData,
     filterData: initialFilterData,
@@ -205,6 +244,25 @@ const customersSlice = createSlice({
             })
             .addCase(getCustomerStatistic.pending, (state) => {
                 state.statisticLoading = true
+            })
+            .addCase(getApplications.fulfilled, (state, action) => {
+                state.applicationList = action.payload
+                state.tableData.total = action.payload.length
+                state.loading = false
+            })
+            .addCase(getApplications.pending, (state) => {
+                state.loading = true
+            })
+            .addCase(updateApplicationStatus.fulfilled, (state, action) => {
+                // Update the application in the list
+                const index = state.applicationList.findIndex(app => app.id === action.payload.id)
+                if (index !== -1) {
+                    state.applicationList[index].status = action.payload.status
+                }
+                state.loading = false
+            })
+            .addCase(updateApplicationStatus.pending, (state) => {
+                state.loading = true
             })
     },
 })

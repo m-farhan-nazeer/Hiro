@@ -78,6 +78,9 @@ def store_job_description(job_text: str):
         collection_name=JOB_COLLECTION,
         url=os.getenv("QDRANT_URL"),
         api_key=os.getenv("QDRANT_API_KEY"),
+        # If collection already exists with a different vector size,
+        # drop and recreate it so embeddings stay compatible.
+        force_recreate=True,
     )
 
     print("✅ Job Description stored successfully.")

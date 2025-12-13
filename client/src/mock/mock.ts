@@ -54,6 +54,7 @@ const { apiPrefix } = appConfig
 export function mockServer({ environment = 'test' }) {
     return createServer({
         environment,
+        trackRequests: true, // Track requests for debugging
         seeds(server) {
             server.db.loadData({
                 notificationListData,
@@ -91,13 +92,25 @@ export function mockServer({ environment = 'test' }) {
         routes() {
             this.urlPrefix = ''
             this.namespace = ''
+            
+            // CRITICAL: Passthrough external URLs FIRST, before any route handlers
+            // This ensures Django backend requests bypass Mirage entirely
+            this.passthrough('http://127.0.0.1:8000/**')
+            this.passthrough('http://localhost:8000/**')
             this.passthrough((request) => {
-                const isExternal = request.url.startsWith('http')
-                const isResource = request.url.startsWith('data:text')
-                return isExternal || isResource
+                const url = request.url || ''
+                // Passthrough any external HTTP URLs
+                if (url.startsWith('http://') || url.startsWith('https://')) {
+                    return true
+                }
+                // Passthrough data URLs
+                if (url.startsWith('data:')) {
+                    return true
+                }
+                return false
             })
-            this.passthrough()
-
+            
+            // Now register mock API routes (these only handle /api/* requests)
             commonFakeApi(this, apiPrefix)
             projectFakeApi(this, apiPrefix)
             crmFakeApi(this, apiPrefix)

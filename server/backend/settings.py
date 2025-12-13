@@ -12,15 +12,15 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
-from pathlib import Path
-import os
-
-# NEW: load .env
-from dotenv import load_dotenv
-load_dotenv()  # reads .env from the project root
+import sys
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Add the mlops directory to Python path so Django can import it
+MLOPS_DIR = BASE_DIR.parent / 'mlops'
+if str(MLOPS_DIR) not in sys.path:
+    sys.path.insert(0, str(MLOPS_DIR))
 
 
 # Quick-start development settings - unsuitable for production
@@ -39,8 +39,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 
-<<<<<<< Updated upstream
-=======
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -48,7 +46,6 @@ CSRF_TRUSTED_ORIGINS = [
 
 CORS_ALLOW_CREDENTIALS = True
 
->>>>>>> Stashed changes
 # Application definition
 
 INSTALLED_APPS = [
@@ -62,6 +59,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'posts',
     'applicants', 
+    'applications',
     'users',
     
 ]
@@ -100,26 +98,26 @@ WSGI_APPLICATION = "backend.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": "posts",
-#         "USER":"postgres",
-#         "PASSWORD":"affan",
-#         "HOST":"localhost"
-#     }
-# }
-
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("PGDATABASE", "posts"),
-        "USER": os.getenv("PGUSER", "postgres"),
-        "PASSWORD": os.getenv("PGPASSWORD", ""),
-        "HOST": os.getenv("PGHOST", "localhost"),
-        "PORT": os.getenv("PGPORT", "5432"),
+        "NAME": "posts",
+        "USER":"postgres",
+        "PASSWORD":"affan",
+        "HOST":"localhost"
     }
 }
+
+# DATABASES = {
+#     "default": {
+#         "ENGINE": "django.db.backends.postgresql",
+#         "NAME": os.getenv("PGDATABASE", "posts"),
+#         "USER": os.getenv("PGUSER", "postgres"),
+#         "PASSWORD": os.getenv("PGPASSWORD", ""),
+#         "HOST": os.getenv("PGHOST", "localhost"),
+#         "PORT": os.getenv("PGPORT", "5432"),
+#     }
+# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators

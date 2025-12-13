@@ -48,6 +48,15 @@ const appsRoute: Routes = [
         },
     },
     {
+        key: 'applications',
+        path: `${APP_PREFIX_PATH}/applications`,
+        component: lazy(() => import('@/views/applicants/ApplicantForm')),
+        authority: [ADMIN, USER],
+        meta: {
+            header: 'applications',
+        },
+    },
+    {
         key: 'appsProject.dashboard',
         path: `${APP_PREFIX_PATH}/project/dashboard`,
         component: lazy(() => import('@/views/project/ProjectDashboard')),

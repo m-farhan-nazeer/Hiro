@@ -17,6 +17,7 @@ import {
     useAppSelector,
 } from '../store'
 import { createJob } from '@/services/JobServices'
+import { APP_PREFIX_PATH } from '@/constants/route.constant'
 import cloneDeep from 'lodash/cloneDeep'
 import * as Yup from 'yup'
 import { auto } from '@popperjs/core'
@@ -167,8 +168,25 @@ const NewProjectForm = ({ onJobUpdated }: NewProjectFormProps) => {
                     domain,
                 }
                 
-                await createJob(jobData)
-                
+                const createdJob = await createJob(jobData)
+
+                // Create application link for this job and copy to clipboard
+                try {
+                    const appLink = `${window.location.origin}${APP_PREFIX_PATH}/applications?id=${createdJob.id}`
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                        await navigator.clipboard.writeText(appLink)
+                        // eslint-disable-next-line no-alert
+                        alert('Job created. Application link copied to clipboard')
+                    } else {
+                        // fallback prompt
+                        // eslint-disable-next-line no-alert
+                        prompt('Job created. Copy application link', appLink)
+                    }
+                } catch (err) {
+                    // ignore clipboard errors but still continue
+                    console.warn('Failed to copy application link', err)
+                }
+
                 // Refresh the jobs list
                 onJobUpdated?.()
                 
