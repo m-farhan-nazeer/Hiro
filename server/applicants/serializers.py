@@ -1,5 +1,31 @@
 from rest_framework import serializers
-from .models import Applicant
+from .models import Applicant, ApplicantProfile
+
+
+class ApplicantProfileSerializer(serializers.ModelSerializer):
+    """Serializer for ApplicantProfile - exposes structured resume insights"""
+    
+    applicant_name = serializers.CharField(source='applicant.name', read_only=True)
+    applicant_email = serializers.CharField(source='applicant.email', read_only=True)
+    
+    class Meta:
+        model = ApplicantProfile
+        fields = [
+            'id',
+            'applicant',
+            'applicant_name',
+            'applicant_email',
+            'extracted_at',
+            'extraction_source',
+            'skills',
+            'experience',
+            'education',
+            'certifications',
+            'summary',
+            'total_experience_years',
+        ]
+        read_only_fields = ['id', 'extracted_at', 'applicant_name', 'applicant_email']
+
 
 
 class ApplicantSerializer(serializers.ModelSerializer):

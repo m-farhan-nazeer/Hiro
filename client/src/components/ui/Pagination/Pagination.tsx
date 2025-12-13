@@ -103,6 +103,17 @@ const Pagination = (props: PaginationProps) => {
         onChange?.(getValidCurrentPage(newPage))
     }, [onChange, internalCurrentPage, getValidCurrentPage])
 
+    const onFirst = useCallback(() => {
+        setInternalCurrentPage(1)
+        onChange?.(1)
+    }, [onChange])
+
+    const onLast = useCallback(() => {
+        const lastPage = getInternalPageCount as number
+        setInternalCurrentPage(lastPage)
+        onChange?.(lastPage)
+    }, [onChange, getInternalPageCount])
+
     const pagerClass = {
         default: 'pagination-pager',
         inactive: 'pagination-pager-inactive',
@@ -115,6 +126,16 @@ const Pagination = (props: PaginationProps) => {
     return (
         <div className={paginationClass}>
             {displayTotal && <Total total={total} />}
+            <button
+                className={classNames(
+                    pagerClass.default,
+                    internalCurrentPage === 1 ? pagerClass.disabled : pagerClass.inactive
+                )}
+                onClick={onFirst}
+                disabled={internalCurrentPage === 1}
+            >
+                First
+            </button>
             <Prev
                 currentPage={internalCurrentPage}
                 pagerClass={pagerClass}
@@ -132,6 +153,16 @@ const Pagination = (props: PaginationProps) => {
                 pagerClass={pagerClass}
                 onNext={onNext}
             />
+            <button
+                className={classNames(
+                    pagerClass.default,
+                    internalCurrentPage === getInternalPageCount ? pagerClass.disabled : pagerClass.inactive
+                )}
+                onClick={onLast}
+                disabled={internalCurrentPage === getInternalPageCount}
+            >
+                Last
+            </button>
         </div>
     )
 }
