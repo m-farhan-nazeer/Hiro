@@ -1,9 +1,14 @@
-from rest_framework import viewsets
+from rest_framework import viewsets, status as http_status
+from rest_framework.decorators import api_view
+from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
-from .models import Applicant
-from .serializers import ApplicantSerializer
+from .models import Applicant, ApplicantProfile
+from .serializers import ApplicantSerializer, ApplicantProfileSerializer
 from applications.models import Application
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ApplicantViewSet(viewsets.ModelViewSet):
@@ -65,3 +70,134 @@ def applicant_resume(request, pk):
     )
     response["Content-Disposition"] = f'inline; filename="resume_{pk}.pdf"'
     return response
+
+
+# ============================================
+# APPLICANT PROFILE API ENDPOINTS
+# ============================================
+
+@api_view(['GET'])
+def get_applicant_profile(request, applicant_id):
+    """
+    GET /api/applicants/<id>/profile/
+    
+    Returns structured resume insights for an applicant.
+    If profile doesn't exist, triggers extraction from most recent resume.
+    
+    Response:
+        200: Profile data (existing or newly created)
+        404: Applicant not found or no resume available
+        500: Extraction failed
+    """
+    try:
+        applicant = Applicant.objects.get(pk=applicant_id)
+    except Applicant.DoesNotExist:
+        return Response(
+            {'error': 'Applicant not found'},
+            status=http_status.HTTP_404_NOT_FOUND
+        )
+    
+    # Check if profile exists
+    try:
+        profile = applicant.profile
+        serializer = ApplicantProfileSerializer(profile)
+        return Response(serializer.data)
+    except ApplicantProfile.DoesNotExist:
+        # Profile doesn't exist, trigger extraction
+        logger.info(f"Profile not found for applicant {applicant_id}, triggering extraction")
+        return trigger_profile_extraction(applicant)
+
+
+@api_view(['POST'])
+def refresh_applicant_profile(request, applicant_id):
+    """
+    POST /api/applicants/<id>/profile/refresh/
+    
+    Force re-extraction of profile from latest resume.
+    Deletes existing profile and creates a new one.
+    
+    Response:
+        201: New profile created
+        404: Applicant not found or no resume available
+        500: Extraction failed
+    """
+    try:
+        applicant = Applicant.objects.get(pk=applicant_id)
+    except Applicant.DoesNotExist:
+        return Response(
+            {'error': 'Applicant not found'},
+            status=http_status.HTTP_404_NOT_FOUND
+        )
+    
+    # Delete existing profile if exists
+    ApplicantProfile.objects.filter(applicant=applicant).delete()
+    logger.info(f"Deleted existing profile for applicant {applicant_id}, re-extracting")
+    
+    # Trigger new extraction
+    return trigger_profile_extraction(applicant)
+
+
+def trigger_profile_extraction(applicant):
+    """
+    Helper function to extract profile from applicant's most recent resume.
+    
+    Args:
+        applicant: Applicant instance
+    
+    Returns:
+        Response with profile data or error
+    """
+    # Get most recent application with resume
+    application = applicant.applications.filter(
+        resume__isnull=False
+    ).exclude(resume=b'').order_by('-date').first()
+    
+    if not application or not application.resume:
+        logger.warning(f"No resume found for applicant {applicant.id}")
+        return Response(
+            {'error': 'No resume found for this applicant'},
+            status=http_status.HTTP_404_NOT_FOUND
+        )
+    
+    try:
+        # Import extraction function
+        from rag.resume_extractor import extract_resume_insights
+        
+        logger.info(f"Extracting insights for applicant {applicant.id} from application {application.id}")
+        
+        # Extract insights
+        insights = extract_resume_insights(
+            resume_bytes=application.resume,
+            filename=f"resume_{applicant.id}.pdf"
+        )
+        
+        # Create profile
+        profile = ApplicantProfile.objects.create(
+            applicant=applicant,
+            extraction_source=f"Application #{application.id}",
+            skills=insights.get('skills', []),
+            experience=insights.get('experience', []),
+            education=insights.get('education', []),
+            certifications=insights.get('certifications', []),
+            summary=insights.get('summary', ''),
+            total_experience_years=insights.get('total_experience_years'),
+            raw_extraction=insights
+        )
+        
+        logger.info(f"Profile created successfully for applicant {applicant.id}")
+        
+        serializer = ApplicantProfileSerializer(profile)
+        return Response(serializer.data, status=http_status.HTTP_201_CREATED)
+        
+    except ImportError as e:
+        logger.error(f"MLOps dependencies not available for applicant {applicant.id}: {str(e)}")
+        return Response(
+            {'error': 'Resume extraction service unavailable', 'detail': str(e)},
+            status=http_status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+    except Exception as e:
+        logger.error(f"Failed to extract profile for applicant {applicant.id}: {str(e)}", exc_info=True)
+        return Response(
+            {'error': 'Failed to extract resume insights', 'detail': str(e)},
+            status=http_status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

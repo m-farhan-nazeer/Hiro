@@ -24,7 +24,12 @@ from rest_framework.routers import DefaultRouter
 from django.conf import settings
 from django.conf.urls.static import static
 
-from applicants.views import ApplicantViewSet, applicant_resume
+from applicants.views import (
+    ApplicantViewSet, 
+    applicant_resume,
+    get_applicant_profile,
+    refresh_applicant_profile
+)
 from users.views import (
     RegisterView,
     LoginView,
@@ -53,6 +58,11 @@ urlpatterns = [
 
     # Applicants
     path("applicants/<int:pk>/resume/", applicant_resume, name="applicant-resume"),
+    
+    # Applicant Profiles (NEW)
+    path("api/applicants/<int:applicant_id>/profile/", get_applicant_profile, name="applicant-profile"),
+    path("api/applicants/<int:applicant_id>/profile/refresh/", refresh_applicant_profile, name="applicant-profile-refresh"),
+    
     path("", include(router.urls)),
 
 ]

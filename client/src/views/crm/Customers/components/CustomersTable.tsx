@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo } from 'react'
+import { useEffect, useCallback, useMemo, useState } from 'react'
 import Avatar from '@/components/ui/Avatar'
 import Badge from '@/components/ui/Badge'
 import DataTable from '@/components/shared/DataTable'
@@ -16,6 +16,7 @@ import {
 } from '../store'
 import useThemeClass from '@/utils/hooks/useThemeClass'
 import CustomerEditDialog from './CustomerEditDialog'
+import ApplicantProfileModal from './ApplicantProfileModal'
 import { Link } from 'react-router-dom'
 import dayjs from 'dayjs'
 import cloneDeep from 'lodash/cloneDeep'
@@ -96,24 +97,29 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
         (state) => state.crmCustomers.data.tableData
     )
 
+    // Modal state for applicant profile
+    const [selectedApplicantId, setSelectedApplicantId] = useState<number | null>(null)
+    const [selectedApplicantName, setSelectedApplicantName] = useState<string>('')
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
+
     const fetchData = useCallback(() => {
-        dispatch(getApplications({ 
-            jobId: jobId ? Number(jobId) : undefined, 
-            status: filterData.status 
+        dispatch(getApplications({
+            jobId: jobId ? Number(jobId) : undefined,
+            status: filterData.status
         }))
     }, [dispatch, jobId, filterData.status])
 
     const handleStatusChange = useCallback((applicationId: number, newStatus: string) => {
-        dispatch(updateApplicationStatus({ 
-            id: applicationId, 
+        dispatch(updateApplicationStatus({
+            id: applicationId,
             status: newStatus,
             jobId: jobId ? Number(jobId) : undefined,
             currentStatus: filterData.status
         })).then(() => {
             // Refresh the list after update to get latest data
-            dispatch(getApplications({ 
-                jobId: jobId ? Number(jobId) : undefined, 
-                status: filterData.status 
+            dispatch(getApplications({
+                jobId: jobId ? Number(jobId) : undefined,
+                status: filterData.status
             }))
         }).catch((error) => {
             console.error('Failed to update application status:', error)
@@ -134,6 +140,23 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
             {
                 header: 'Name',
                 accessorKey: 'applicant_name',
+                cell: (props) => {
+                    const row = props.row.original
+                    return (
+                        <div
+                            className="flex items-center cursor-pointer hover:opacity-80"
+                            onClick={() => {
+                                setSelectedApplicantId(row.applicant)
+                                setSelectedApplicantName(row.applicant_name)
+                                setIsProfileModalOpen(true)
+                            }}
+                        >
+                            <span className="ml-2 font-semibold text-blue-600 hover:text-blue-700">
+                                {row.applicant_name}
+                            </span>
+                        </div>
+                    )
+                },
             },
             {
                 header: 'Email',
@@ -150,7 +173,7 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
                     const row = props.row.original
                     const status = row.status || 'pending'
                     const currentOption = statusOptions.find(opt => opt.value === status) || statusOptions[0]
-                    
+
                     return (
                         <div className="flex items-center gap-2">
                             {/* <Badge className={statusColor[status] || statusColor.pending} /> */}
@@ -267,6 +290,12 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
                 onSort={onSort}
             />
             <CustomerEditDialog />
+            <ApplicantProfileModal
+                applicantId={selectedApplicantId}
+                applicantName={selectedApplicantName}
+                isOpen={isProfileModalOpen}
+                onClose={() => setIsProfileModalOpen(false)}
+            />
         </>
     )
 }
