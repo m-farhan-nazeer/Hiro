@@ -3,7 +3,8 @@ import Dialog from '@/components/ui/Dialog'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import Spinner from '@/components/ui/Spinner'
-import { HiRefresh, HiX, HiChevronDown, HiChevronRight } from 'react-icons/hi'
+import { HiRefresh, HiX, HiChevronDown, HiChevronRight, HiExternalLink } from 'react-icons/hi'
+import { FaGithub, FaLinkedin } from 'react-icons/fa'
 import ApiService from '@/services/ApiService'
 
 interface Skill {
@@ -45,6 +46,8 @@ interface ApplicantProfile {
     total_experience_years?: number | null
     extracted_at: string
     extraction_source: string
+    github_url?: string | null
+    linkedin_url?: string | null
 }
 
 interface ApplicantProfileModalProps {
@@ -136,9 +139,35 @@ const ApplicantProfileModal = ({
                     <div>
                         <h4 className="text-xl font-bold">{applicantName}'s Profile</h4>
                         {profile && (
-                            <p className="text-sm text-gray-500 mt-1">
-                                Extracted from {profile.extraction_source}
-                            </p>
+                            <div className="flex flex-col gap-1 mt-1">
+                                <p className="text-sm text-gray-500">
+                                    Extracted from {profile.extraction_source}
+                                </p>
+                                <div className="flex gap-2 mt-1">
+                                    {profile.github_url && (
+                                        <a
+                                            href={profile.github_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white transition-colors"
+                                            title="GitHub Profile"
+                                        >
+                                            <FaGithub size={20} />
+                                        </a>
+                                    )}
+                                    {profile.linkedin_url && (
+                                        <a
+                                            href={profile.linkedin_url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-[#0077b5] hover:text-[#006396] transition-colors"
+                                            title="LinkedIn Profile"
+                                        >
+                                            <FaLinkedin size={20} />
+                                        </a>
+                                    )}
+                                </div>
+                            </div>
                         )}
                     </div>
                     <div className="flex gap-2">

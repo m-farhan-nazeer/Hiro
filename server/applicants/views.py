@@ -181,6 +181,8 @@ def trigger_profile_extraction(applicant):
             certifications=insights.get('certifications', []),
             summary=insights.get('summary', ''),
             total_experience_years=insights.get('total_experience_years'),
+            github_url=insights.get('github_url'),
+            linkedin_url=insights.get('linkedin_url'),
             raw_extraction=insights
         )
         

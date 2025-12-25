@@ -79,6 +79,20 @@ class ApplicantProfile(models.Model):
         help_text="Total years of professional experience"
     )
     
+    # Social Links
+    github_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="GitHub profile URL"
+    )
+    linkedin_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="LinkedIn profile URL"
+    )
+    
     # Raw extraction for reference
     raw_extraction = models.JSONField(
         default=dict,

@@ -56,6 +56,8 @@ def test_extraction():
         print(f"   • Experience: {len(insights.get('experience', []))} positions")
         print(f"   • Education: {len(insights.get('education', []))} entries")
         print(f"   • Certifications: {len(insights.get('certifications', []))} found")
+        print(f"   • GitHub: {insights.get('github_url', 'N/A')}")
+        print(f"   • LinkedIn: {insights.get('linkedin_url', 'N/A')}")
         print(f"   • Total Experience: {insights.get('total_experience_years', 'N/A')} years\n")
         
         # Create or update profile
@@ -68,6 +70,8 @@ def test_extraction():
                 'education': insights.get('education', []),
                 'certifications': insights.get('certifications', []),
                 'summary': insights.get('summary', ''),
+                'github_url': insights.get('github_url'),
+                'linkedin_url': insights.get('linkedin_url'),
                 'total_experience_years': insights.get('total_experience_years'),
                 'raw_extraction': insights
             }

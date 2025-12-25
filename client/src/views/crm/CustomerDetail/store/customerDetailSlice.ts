@@ -16,6 +16,7 @@ type PersonalInfo = {
     twitter: string
     pinterest: string
     linkedIn: string
+    github: string
 }
 
 export type OrderHistory = {

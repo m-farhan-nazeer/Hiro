@@ -10,6 +10,7 @@ import {
     FaTwitter,
     FaLinkedinIn,
     FaPinterestP,
+    FaGithub,
 } from 'react-icons/fa'
 import { HiPencilAlt, HiOutlineTrash } from 'react-icons/hi'
 import { useNavigate } from 'react-router-dom'
@@ -156,6 +157,30 @@ const CustomerProfile = ({ data = {} }: CustomerProfileProps) => {
                                 icon={
                                     <FaLinkedinIn className="text-[#0077b5]" />
                                 }
+                                onClick={() => {
+                                    if (data.personalInfo?.linkedIn) {
+                                        window.open(
+                                            `https://${data.personalInfo.linkedIn}`,
+                                            '_blank'
+                                        )
+                                    }
+                                }}
+                            />
+                            <Button
+                                className="mr-2"
+                                shape="circle"
+                                size="sm"
+                                icon={
+                                    <FaGithub className="text-[#24292f]" />
+                                }
+                                onClick={() => {
+                                    if (data.personalInfo?.github) {
+                                        window.open(
+                                            `https://${data.personalInfo.github}`,
+                                            '_blank'
+                                        )
+                                    }
+                                }}
                             />
                             <Button
                                 className="mr-2"
