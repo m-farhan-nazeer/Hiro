@@ -109,6 +109,7 @@ export const userDetailData = [
             twitter: 'twitter.com/sample',
             pinterest: 'pinterest.com/sample',
             linkedIn: 'linkedin/sample',
+            github: 'github.com/sample',
         },
         orderHistory: [
             {

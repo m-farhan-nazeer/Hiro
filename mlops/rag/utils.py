@@ -22,7 +22,33 @@ def load_single_file(file_path):
     ext = os.path.splitext(file_path)[-1].lower()
 
     if ext == ".pdf":
-        loader = PyPDFLoader(file_path)
+        # enhanced PDF loading with hyperlink extraction
+        try:
+            import pypdf
+            reader = pypdf.PdfReader(file_path)
+            docs = []
+            for i, page in enumerate(reader.pages):
+                text = page.extract_text() or ""
+                
+                # Extract hyperlinks
+                links = []
+                if "/Annots" in page:
+                    for annot in page["/Annots"]:
+                        obj = annot.get_object()
+                        if "/A" in obj and "/URI" in obj["/A"]:
+                            uri = obj["/A"]["/URI"]
+                            links.append(uri)
+                
+                # Append links to text if found
+                if links:
+                    text += "\n\nExtracted Links:\n" + "\n".join(links)
+                
+                docs.append(Document(page_content=text, metadata={"source": file_path, "page": i}))
+            return docs
+            
+        except ImportError:
+            # Fallback to langchain loader if pypdf is not directly available
+            loader = PyPDFLoader(file_path)
     elif ext in [".docx", ".doc"]:
         loader = UnstructuredWordDocumentLoader(file_path)
     elif ext == ".txt":

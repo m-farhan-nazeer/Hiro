@@ -79,6 +79,26 @@ class ApplicantProfile(models.Model):
         help_text="Total years of professional experience"
     )
     
+    # Social Links
+    github_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="GitHub profile URL"
+    )
+    linkedin_url = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="LinkedIn profile URL"
+    )
+
+    social_insights = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Scraped data from social profiles (e.g. LinkedIn)"
+    )
+    
     # Raw extraction for reference
     raw_extraction = models.JSONField(
         default=dict,
@@ -93,3 +113,42 @@ class ApplicantProfile(models.Model):
     
     def __str__(self):
         return f"Profile: {self.applicant.name}"
+
+
+class LinkedInScrapingActivity(models.Model):
+    """
+    Tracks LinkedIn scraping activity to enforce daily limits.
+    Helps prevent account flags by staying under LinkedIn's radar.
+    """
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+    profile_url = models.URLField()
+    success = models.BooleanField(default=True)
+    error_message = models.TextField(blank=True, null=True)
+    
+    class Meta:
+        db_table = 'linkedin_scraping_activity'
+        ordering = ['-timestamp']
+    
+    @classmethod
+    def get_today_count(cls):
+        """Get number of successful scrapes today."""
+        from django.utils import timezone
+        today_start = timezone.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        return cls.objects.filter(
+            timestamp__gte=today_start,
+            success=True
+        ).count()
+    
+    @classmethod
+    def can_scrape_today(cls, daily_limit=50):
+        """Check if we're under daily limit."""
+        return cls.get_today_count() < daily_limit
+    
+    @classmethod
+    def log_scrape(cls, profile_url, success=True, error=None):
+        """Log a scraping attempt."""
+        return cls.objects.create(
+            profile_url=profile_url,
+            success=success,
+            error_message=error
+        )

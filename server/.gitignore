@@ -1,0 +1,4 @@
+# LinkedIn session files (contains authentication tokens)
+.linkedin_session/
+linkedin_session.json
+debug/

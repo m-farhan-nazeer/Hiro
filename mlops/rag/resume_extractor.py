@@ -58,6 +58,14 @@ class ResumeInsights(BaseModel):
     summary: str = Field(
         description="2-3 sentence professional summary highlighting key strengths and experience"
     )
+    github_url: Optional[str] = Field(
+        default=None,
+        description="GitHub profile URL if found (check for hyperlinks)"
+    )
+    linkedin_url: Optional[str] = Field(
+        default=None,
+        description="LinkedIn profile URL if found (check for hyperlinks)"
+    )
     skills: List[Skill] = Field(
         default_factory=list,
         description="All technical and soft skills mentioned"
@@ -95,6 +103,8 @@ def extract_resume_insights(resume_bytes: bytes, filename: str = "resume.pdf") -
     Returns:
         dict: Structured resume insights with keys:
             - summary (str)
+            - github_url (str or None)
+            - linkedin_url (str or None)
             - skills (list)
             - experience (list)
             - education (list)
@@ -138,6 +148,7 @@ def extract_resume_insights(resume_bytes: bytes, filename: str = "resume.pdf") -
 
 Instructions:
 - Be thorough but concise
+- Look specifically for social media links like GitHub and LinkedIn. If the text has "Extracted Links", check there first.
 - For skills, categorize them appropriately (Programming, Design, Management, Communication, etc.)
 - For experience, include company name, job title, duration, and key responsibilities
 - Calculate total years of experience from the work history

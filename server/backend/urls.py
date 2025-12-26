@@ -28,7 +28,9 @@ from applicants.views import (
     ApplicantViewSet, 
     applicant_resume,
     get_applicant_profile,
-    refresh_applicant_profile
+    get_applicant_profile,
+    refresh_applicant_profile,
+    scrape_social_profile
 )
 from users.views import (
     RegisterView,
@@ -62,6 +64,7 @@ urlpatterns = [
     # Applicant Profiles (NEW)
     path("api/applicants/<int:applicant_id>/profile/", get_applicant_profile, name="applicant-profile"),
     path("api/applicants/<int:applicant_id>/profile/refresh/", refresh_applicant_profile, name="applicant-profile-refresh"),
+    path("api/applicants/<int:applicant_id>/social-scrape/", scrape_social_profile, name="applicant-social-scrape"),
     
     path("", include(router.urls)),
 
