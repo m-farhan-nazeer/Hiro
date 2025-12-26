@@ -25,6 +25,7 @@ class ApplicantProfileSerializer(serializers.ModelSerializer):
             'total_experience_years',
             'github_url',
             'linkedin_url',
+            'social_insights',
         ]
         read_only_fields = ['id', 'extracted_at', 'applicant_name', 'applicant_email']
 

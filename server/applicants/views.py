@@ -7,6 +7,9 @@ from .models import Applicant, ApplicantProfile
 from .serializers import ApplicantSerializer, ApplicantProfileSerializer
 from applications.models import Application
 import logging
+import asyncio
+from asgiref.sync import async_to_sync
+from .scrapers import LinkedInScraper
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +140,64 @@ def refresh_applicant_profile(request, applicant_id):
     return trigger_profile_extraction(applicant)
 
 
+@api_view(['POST'])
+def scrape_social_profile(request, applicant_id):
+    """
+    POST /api/applicants/<id>/social-scrape/
+    
+    Triggers LinkedIn scraping for the applicant.
+    Uses the stored linkedin_url.
+    """
+    try:
+        applicant = Applicant.objects.get(pk=applicant_id)
+    except Applicant.DoesNotExist:
+        return Response({'error': 'Applicant not found'}, status=404)
+
+    try:
+        profile = applicant.profile
+    except ApplicantProfile.DoesNotExist:
+        return Response({'error': 'Applicant profile not found'}, status=404)
+
+    if not profile.linkedin_url:
+        return Response({'error': 'No LinkedIn URL found for this applicant'}, status=400)
+
+    # Check rate limiting
+    from .models import LinkedInScrapingActivity
+    daily_limit = 50
+    if not LinkedInScrapingActivity.can_scrape_today(daily_limit):
+        count = LinkedInScrapingActivity.get_today_count()
+        return Response({
+            'error': f'Daily limit reached ({count}/{daily_limit}). Try again tomorrow.'
+        }, status=429)
+
+    logger.info(f"Starting LinkedIn scrape for applicant {applicant_id} at {profile.linkedin_url}")
+
+    try:
+        scraper = LinkedInScraper()
+        insights = scraper.scrape_profile(profile.linkedin_url)
+        
+        # Log activity
+        success = bool(insights.get("headline") or insights.get("about"))
+        LinkedInScrapingActivity.log_scrape(
+            profile.linkedin_url,
+            success=success,
+            error=insights.get("error")
+        )
+        
+        # Save to DB
+        profile.social_insights = insights
+        profile.save()
+        
+        return Response(insights)
+        
+    except Exception as e:
+        logger.error(f"Scraping failed: {e}")
+        LinkedInScrapingActivity.log_scrape(profile.linkedin_url, success=False, error=str(e))
+        return Response({'error': str(e)}, status=500)
+
+
+
+
 def trigger_profile_extraction(applicant):
     """
     Helper function to extract profile from applicant's most recent resume.
@@ -172,18 +233,21 @@ def trigger_profile_extraction(applicant):
         )
         
         # Create profile
-        profile = ApplicantProfile.objects.create(
+        # Create or update profile (handle race conditions)
+        profile, created = ApplicantProfile.objects.update_or_create(
             applicant=applicant,
-            extraction_source=f"Application #{application.id}",
-            skills=insights.get('skills', []),
-            experience=insights.get('experience', []),
-            education=insights.get('education', []),
-            certifications=insights.get('certifications', []),
-            summary=insights.get('summary', ''),
-            total_experience_years=insights.get('total_experience_years'),
-            github_url=insights.get('github_url'),
-            linkedin_url=insights.get('linkedin_url'),
-            raw_extraction=insights
+            defaults={
+                'extraction_source': f"Application #{application.id}",
+                'skills': insights.get('skills', []),
+                'experience': insights.get('experience', []),
+                'education': insights.get('education', []),
+                'certifications': insights.get('certifications', []),
+                'summary': insights.get('summary', ''),
+                'total_experience_years': insights.get('total_experience_years'),
+                'github_url': insights.get('github_url'),
+                'linkedin_url': insights.get('linkedin_url'),
+                'raw_extraction': insights
+            }
         )
         
         logger.info(f"Profile created successfully for applicant {applicant.id}")
