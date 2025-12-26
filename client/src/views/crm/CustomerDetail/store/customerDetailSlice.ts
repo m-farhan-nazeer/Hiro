@@ -17,6 +17,7 @@ type PersonalInfo = {
     pinterest: string
     linkedIn: string
     github: string
+    social_insights?: Record<string, any>
 }
 
 export type OrderHistory = {
