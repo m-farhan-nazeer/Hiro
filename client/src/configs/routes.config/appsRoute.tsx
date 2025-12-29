@@ -47,15 +47,8 @@ const appsRoute: Routes = [
             headerContainer: true,
         },
     },
-    {
-        key: 'applications',
-        path: `${APP_PREFIX_PATH}/applications`,
-        component: lazy(() => import('@/views/applicants/ApplicantForm')),
-        authority: [ADMIN, USER],
-        meta: {
-            header: 'applications',
-        },
-    },
+    // Application form has been moved to public route at /apply
+    // so anyone can submit applications without signing in
     {
         key: 'appsProject.dashboard',
         path: `${APP_PREFIX_PATH}/project/dashboard`,

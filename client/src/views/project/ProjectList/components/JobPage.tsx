@@ -35,12 +35,13 @@ const Applicants = () => {
 
     const openApplicationForm = () => {
         if (!jobId) return
-        navigate(`${APP_PREFIX_PATH}/applications?id=${jobId}`)
+        // Open the public application form in a new tab
+        window.open(`/apply?id=${jobId}`, '_blank')
     }
 
     const copyApplicationLink = async () => {
         if (!jobId) return
-        const link = `${window.location.origin}${APP_PREFIX_PATH}/applications?id=${jobId}`
+        const link = `${window.location.origin}/apply?id=${jobId}`
         try {
             await navigator.clipboard.writeText(link)
             // small confirmation
@@ -61,8 +62,8 @@ const Applicants = () => {
                 </h2>
                 {jobId && (
                     <div className="flex items-center gap-2">
-                        <Button size="sm" onClick={openApplicationForm}>Open Application Form</Button>
-                        <Button size="sm" variant="plain" onClick={copyApplicationLink}>Copy Link</Button>
+                        {/* <Button size="sm" onClick={openApplicationForm}>Open Application Form</Button> */}
+                        <Button size="sm" onClick={copyApplicationLink}>Copy Link</Button>
                     </div>
                 )}
             </div>

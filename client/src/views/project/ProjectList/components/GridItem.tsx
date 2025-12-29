@@ -4,6 +4,7 @@ import Members from './Members'
 import ProgressionBar from './ProgressionBar'
 import { HiOutlineClipboardCheck } from 'react-icons/hi'
 import { Link } from 'react-router-dom'
+import Button from '@/components/ui/Button'
 
 export type GridItemProps = {
     data: {
@@ -32,7 +33,7 @@ export type JobItemProps = {
         status: string;
         jobtype: string;
         jobtime: string;
-        required_skills: string; 
+        required_skills: string;
         domain: string;
     };
     onJobUpdated?: () => void;
@@ -55,23 +56,23 @@ const GridItem = ({ job, onJobUpdated }: JobItemProps) => {
                     </Link>
                     <ItemDropdown job={job} onJobUpdated={onJobUpdated} />
                 </div>
-                
-                <p className="mt-4">{pay}</p>
+
+                <div className="mt-2"><Button size="sm">{job.status}</Button></div>
                 <div className="mt-3">
                     {/* <ProgressionBar progression={progression} /> */}
                     <div className="flex items-center justify-between mt-2">
                         {/* <Members members={member} /> */}
                         <div className="flex items-center rounded-full font-semibold text-xs gap-1">
-                        {skills.map((skill) => (   
-                            <div className="flex items-center px-2 py-1 border border-gray-300 rounded-full">
-                                {/* <HiOutlineClipboardCheck className="text-base" /> */}
-                                 
+                            {skills.map((skill) => (
+                                <div className="flex items-center px-2 py-1 border border-gray-300 rounded-full">
+                                    {/* <HiOutlineClipboardCheck className="text-base" /> */}
+
                                     <span className="ml-1 rtl:mr-1 whitespace-nowrap">
                                         {skill}
                                     </span>
-                                
-                            </div>
-                        ))}
+
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
