@@ -55,11 +55,10 @@ const CustomSelectOption = ({
 }: OptionProps<{ img: string }>) => {
     return (
         <div
-            className={`flex items-center justify-between p-2 ${
-                isSelected
-                    ? 'bg-gray-100 dark:bg-gray-500'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-600'
-            }`}
+            className={`flex items-center justify-between p-2 ${isSelected
+                ? 'bg-gray-100 dark:bg-gray-500'
+                : 'hover:bg-gray-50 dark:hover:bg-gray-600'
+                }`}
             {...innerProps}
         >
             <div className="flex items-center">
@@ -89,9 +88,12 @@ const CustomControlMulti = ({ children, ...props }: MultiValueGenericProps) => {
     )
 }
 
-const validationSchema = Yup.object().shape({
+// Validation schema - status is only required in edit mode
+const getValidationSchema = (isEditMode: boolean) => Yup.object().shape({
     title: Yup.string().min(3, 'Too Short!').required('Title required'),
-    status: Yup.string().oneOf(['active', 'closed']).required('Status required'),
+    status: isEditMode
+        ? Yup.string().oneOf(['active', 'closed']).required('Status required')
+        : Yup.string().oneOf(['active', 'closed']),
     domain: Yup.string().min(3, 'Too Short!').required('Domain required'),
     description: Yup.string().required('Description required'),
     // assignees: Yup.array().min(1, 'Assignee required'),
@@ -103,9 +105,11 @@ const validationSchema = Yup.object().shape({
 
 type NewProjectFormProps = {
     onJobUpdated?: () => void;
+    isEditMode?: boolean;
+    initialData?: Partial<FormModel>;
 }
 
-const NewProjectForm = ({ onJobUpdated }: NewProjectFormProps) => {
+const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewProjectFormProps) => {
     const statusOptions = [
         { value: 'active', label: 'Active' },
         { value: 'closed', label: 'Closed' },
@@ -144,91 +148,91 @@ const NewProjectForm = ({ onJobUpdated }: NewProjectFormProps) => {
     }
 
     const onSubmit = async (
-            formValue: FormModel,
-            setSubmitting: (isSubmitting: boolean) => void
-        ) => {
-            setSubmitting(true)
+        formValue: FormModel,
+        setSubmitting: (isSubmitting: boolean) => void
+    ) => {
+        setSubmitting(true)
 
-            try {
-                const { title, status, domain, description, assignees, jobType, jobTime, requiredSkills } = formValue
-                const { totalTask, completedTask } = taskCount
-                const member = cloneDeep(assignees).map((assignee) => {
-                    assignee.name = assignee.label
-                    return assignee
-                })
-                
-                // Create job via API
-                const jobData = {
-                    title,
-                    description,
-                    status,
-                    jobtype: jobType,
-                    jobtime: jobTime,
-                    required_skills: requiredSkills.join(', '),
-                    domain,
-                }
-                
-                const createdJob = await createJob(jobData)
+        try {
+            const { title, status, domain, description, assignees, jobType, jobTime, requiredSkills } = formValue
+            const { totalTask, completedTask } = taskCount
+            const member = cloneDeep(assignees).map((assignee) => {
+                assignee.name = assignee.label
+                return assignee
+            })
 
-                // Create application link for this job and copy to clipboard
-                try {
-                    const appLink = `${window.location.origin}${APP_PREFIX_PATH}/applications?id=${createdJob.id}`
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                        await navigator.clipboard.writeText(appLink)
-                        // eslint-disable-next-line no-alert
-                        alert('Job created. Application link copied to clipboard')
-                    } else {
-                        // fallback prompt
-                        // eslint-disable-next-line no-alert
-                        prompt('Job created. Copy application link', appLink)
-                    }
-                } catch (err) {
-                    // ignore clipboard errors but still continue
-                    console.warn('Failed to copy application link', err)
-                }
-
-                // Refresh the jobs list
-                onJobUpdated?.()
-                
-                // Also update the local state for consistency
-                const values = {
-                    id: newId,
-                    name: title,
-                    status: status,
-                    domain: domain,
-                    desc: description,
-                    jobType,
-                    jobTime,
-                    requiredSkills,
-                    totalTask,
-                    completedTask,
-                    progression:
-                        ((completedTask as number) / (totalTask as number)) * 100 || 0,
-                    member,
-                }
-                dispatch(putProject(values))
-                dispatch(toggleNewProjectDialog(false))
-            } catch (error) {
-                console.error('Failed to create job:', error)
-                // Handle error - you might want to show a toast notification here
-            } finally {
-                setSubmitting(false)
+            // Create job via API
+            const jobData = {
+                title,
+                description,
+                status,
+                jobtype: jobType,
+                jobtime: jobTime,
+                required_skills: requiredSkills.join(', '),
+                domain,
             }
+
+            const createdJob = await createJob(jobData)
+
+            // Create application link for this job and copy to clipboard
+            try {
+                const appLink = `${window.location.origin}/apply?id=${createdJob.id}`
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    await navigator.clipboard.writeText(appLink)
+                    // eslint-disable-next-line no-alert
+                    alert('Job created. Application link copied to clipboard')
+                } else {
+                    // fallback prompt
+                    // eslint-disable-next-line no-alert
+                    prompt('Job created. Copy application link', appLink)
+                }
+            } catch (err) {
+                // ignore clipboard errors but still continue
+                console.warn('Failed to copy application link', err)
+            }
+
+            // Refresh the jobs list
+            onJobUpdated?.()
+
+            // Also update the local state for consistency
+            const values = {
+                id: newId,
+                name: title,
+                status: status,
+                domain: domain,
+                desc: description,
+                jobType,
+                jobTime,
+                requiredSkills,
+                totalTask,
+                completedTask,
+                progression:
+                    ((completedTask as number) / (totalTask as number)) * 100 || 0,
+                member,
+            }
+            dispatch(putProject(values))
+            dispatch(toggleNewProjectDialog(false))
+        } catch (error) {
+            console.error('Failed to create job:', error)
+            // Handle error - you might want to show a toast notification here
+        } finally {
+            setSubmitting(false)
         }
+    }
 
     return (
-        <Formik 
-                initialValues={{
-                    title: '',
-                    status: '',
-                    domain: '',
-                    description: '',
-                    jobType: '',
-                    jobTime: '',
-                    requiredSkills: [],
-                    assignees: [],
-                }}
-            validationSchema={validationSchema}
+        <Formik
+            initialValues={{
+                title: initialData?.title || '',
+                status: initialData?.status || 'active', // Default to 'active' for new jobs
+                domain: initialData?.domain || '',
+                description: initialData?.description || '',
+                jobType: initialData?.jobType || '',
+                jobTime: initialData?.jobTime || '',
+                requiredSkills: initialData?.requiredSkills || [],
+                assignees: initialData?.assignees || [],
+            }}
+            validationSchema={getValidationSchema(isEditMode)}
             onSubmit={(values, { setSubmitting }) => {
                 onSubmit(values, setSubmitting)
             }}
@@ -261,22 +265,25 @@ const NewProjectForm = ({ onJobUpdated }: NewProjectFormProps) => {
                                 component={Input}
                             />
                         </FormItem>
-                        <FormItem
-                            label="Status"
-                            invalid={Boolean(errors.status) && Boolean(touched.status)}
-                            errorMessage={typeof errors.status === 'string' ? errors.status : undefined}
-                        >
-                            <Field name="status">
-                                {({ field, form }: FieldProps) => (
-                                    <Select
-                                        className="min-w-[120px]"
-                                        options={statusOptions}
-                                        value={statusOptions.find(opt => opt.value === field.value)}
-                                        onChange={option => form.setFieldValue(field.name, option ? option.value : '')}
-                                    />
-                                )}
-                            </Field>
-                        </FormItem>
+                        {/* Status field only shown in edit mode */}
+                        {isEditMode && (
+                            <FormItem
+                                label="Status"
+                                invalid={Boolean(errors.status) && Boolean(touched.status)}
+                                errorMessage={typeof errors.status === 'string' ? errors.status : undefined}
+                            >
+                                <Field name="status">
+                                    {({ field, form }: FieldProps) => (
+                                        <Select
+                                            className="min-w-[120px]"
+                                            options={statusOptions}
+                                            value={statusOptions.find(opt => opt.value === field.value)}
+                                            onChange={option => form.setFieldValue(field.name, option ? option.value : '')}
+                                        />
+                                    )}
+                                </Field>
+                            </FormItem>
+                        )}
                         <FormItem
                             label="Domain"
                             invalid={errors.domain && touched.domain}
@@ -290,56 +297,56 @@ const NewProjectForm = ({ onJobUpdated }: NewProjectFormProps) => {
                                 component={Input}
                             />
                         </FormItem>
-                            <FormItem
-                                label="Job Type"
-                                invalid={errors.jobType && touched.jobType}
-                                errorMessage={errors.jobType}
-                            >
-                                <Field name="jobType">
-                                    {({ field, form }: FieldProps) => (
-                                        <Select
-                                            className="min-w-[120px]"
-                                            options={jobTypeOptions}
-                                            value={jobTypeOptions.find(opt => opt.value === field.value)}
-                                            onChange={option => form.setFieldValue(field.name, option ? option.value : '')}
-                                        />
-                                    )}
-                                </Field>
-                            </FormItem>
-                            <FormItem
-                                label="Job Time"
-                                invalid={errors.jobTime && touched.jobTime}
-                                errorMessage={errors.jobTime}
-                            >
-                                <Field name="jobTime">
-                                    {({ field, form }: FieldProps) => (
-                                        <Select
-                                            className="min-w-[120px]"
-                                            options={jobTimeOptions}
-                                            value={jobTimeOptions.find(opt => opt.value === field.value)}
-                                            onChange={option => form.setFieldValue(field.name, option ? option.value : '')}
-                                        />
-                                    )}
-                                </Field>
-                            </FormItem>
-                            <FormItem
-                                label="Required Skills"
-                                invalid={Boolean(errors.requiredSkills) && Boolean(touched.requiredSkills)}
-                                errorMessage={typeof errors.requiredSkills === 'string' ? errors.requiredSkills : undefined}
-                            >
-                                <Field name="requiredSkills">
-                                    {({ field, form }: FieldProps) => (
-                                        <Select
-                                            isMulti
-                                            className="min-w-[120px]"
-                                            options={skillOptions}
-                                            value={skillOptions.filter(opt => field.value.includes(opt.value))}
-                                            onChange={option => form.setFieldValue(field.name, Array.isArray(option) ? option.map((o: any) => o.value) : [])}
-                                        />
-                                    )}
-                                </Field>
-                            </FormItem>
-                        
+                        <FormItem
+                            label="Job Type"
+                            invalid={errors.jobType && touched.jobType}
+                            errorMessage={errors.jobType}
+                        >
+                            <Field name="jobType">
+                                {({ field, form }: FieldProps) => (
+                                    <Select
+                                        className="min-w-[120px]"
+                                        options={jobTypeOptions}
+                                        value={jobTypeOptions.find(opt => opt.value === field.value)}
+                                        onChange={option => form.setFieldValue(field.name, option ? option.value : '')}
+                                    />
+                                )}
+                            </Field>
+                        </FormItem>
+                        <FormItem
+                            label="Job Time"
+                            invalid={errors.jobTime && touched.jobTime}
+                            errorMessage={errors.jobTime}
+                        >
+                            <Field name="jobTime">
+                                {({ field, form }: FieldProps) => (
+                                    <Select
+                                        className="min-w-[120px]"
+                                        options={jobTimeOptions}
+                                        value={jobTimeOptions.find(opt => opt.value === field.value)}
+                                        onChange={option => form.setFieldValue(field.name, option ? option.value : '')}
+                                    />
+                                )}
+                            </Field>
+                        </FormItem>
+                        <FormItem
+                            label="Required Skills"
+                            invalid={Boolean(errors.requiredSkills) && Boolean(touched.requiredSkills)}
+                            errorMessage={typeof errors.requiredSkills === 'string' ? errors.requiredSkills : undefined}
+                        >
+                            <Field name="requiredSkills">
+                                {({ field, form }: FieldProps) => (
+                                    <Select
+                                        isMulti
+                                        className="min-w-[120px]"
+                                        options={skillOptions}
+                                        value={skillOptions.filter(opt => field.value.includes(opt.value))}
+                                        onChange={option => form.setFieldValue(field.name, Array.isArray(option) ? option.map((o: any) => o.value) : [])}
+                                    />
+                                )}
+                            </Field>
+                        </FormItem>
+
                         {/* <FormItem
                             label="Assignees"
                             invalid={
@@ -386,7 +393,7 @@ const NewProjectForm = ({ onJobUpdated }: NewProjectFormProps) => {
                         </FormItem>
                         {/* <NewTaskField onAddNewTask={handleAddNewTask} /> */}
                         <Button block variant="solid" type="submit">
-                            Post
+                            {isEditMode ? 'Update' : 'Post'}
                         </Button>
                     </FormContainer>
                 </Form>

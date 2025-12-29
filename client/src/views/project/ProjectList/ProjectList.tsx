@@ -19,10 +19,11 @@ const ProjectList = () => {
     return (
         <Container className="h-full">
             <ActionBar />
-            <ProjectListContent onJobUpdated={handleJobUpdated} />
+            <ProjectListContent refreshTrigger={refreshTrigger} onJobUpdated={handleJobUpdated} />
             <NewProjectDialog onJobUpdated={handleJobUpdated} />
         </Container>
     )
 }
 
 export default ProjectList
+

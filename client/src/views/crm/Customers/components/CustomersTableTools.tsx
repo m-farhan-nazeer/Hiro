@@ -56,16 +56,16 @@ const CustomersTableTools = ({ jobId }: CustomersTableToolsProps = {}) => {
     return (
         <div className="md:flex items-center justify-between">
             <div className="md:flex items-center gap-4">
-                <CustomerTableSearch
+                {/* <CustomerTableSearch
                     ref={inputRef}
                     onInputChange={handleInputChange}
-                />
+                /> */}
                 <CustomerTableFilter jobId={jobId} />
             </div>
             <div className="mb-4">
-                <Button size="sm" onClick={onClearAll}>
+                {/* <Button size="sm" onClick={onClearAll}>
                     Refresh
-                </Button>
+                </Button> */}
             </div>
         </div>
     )

@@ -124,9 +124,9 @@ const SignInForm = (props: SignInFormProps) => {
                                 >
                                     Remember Me
                                 </Field>
-                                <ActionLink to={forgotPasswordUrl}>
+                                {/* <ActionLink to={forgotPasswordUrl}>
                                     Forgot Password?
-                                </ActionLink>
+                                </ActionLink> */}
                             </div>
                             <Button
                                 block

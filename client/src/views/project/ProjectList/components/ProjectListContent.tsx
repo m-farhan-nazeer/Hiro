@@ -10,9 +10,10 @@ import { useState } from 'react'
 
 type ProjectListContentProps = {
     onJobUpdated?: () => void;
+    refreshTrigger?: number; // When this changes, re-fetch jobs
 }
 
-const ProjectListContent = ({ onJobUpdated }: ProjectListContentProps) => {
+const ProjectListContent = ({ onJobUpdated, refreshTrigger = 0 }: ProjectListContentProps) => {
     const [jobs, setJobs] = useState<any[]>([]);
 
     const fetchJobs = async () => {
@@ -25,12 +26,14 @@ const ProjectListContent = ({ onJobUpdated }: ProjectListContentProps) => {
         }
     };
 
+    // Fetch jobs on mount and whenever refreshTrigger changes
     useEffect(() => {
         fetchJobs();
-    }, []);
+    }, [refreshTrigger]);
 
     const handleJobUpdated = () => {
         fetchJobs(); // Refresh the jobs list
+        onJobUpdated?.(); // Also call parent callback if provided
     };
     const dispatch = useAppDispatch()
 
