@@ -91,6 +91,11 @@ const ApplicantForm = ({ onSubmitted }: ApplicantFormProps) => {
                 resume_file: values.resume as File,
             })
 
+            // Notify other tabs to refetch applications
+            const channel = new BroadcastChannel('hiro-updates')
+            channel.postMessage({ type: 'REFETCH_APPLICATIONS' })
+            channel.close()
+
             setSubmitSuccess(true)
             resetForm()
             onSubmitted?.()
@@ -176,8 +181,8 @@ const ApplicantForm = ({ onSubmitted }: ApplicantFormProps) => {
                                 accept=".pdf,application/pdf"
                                 aria-label="resume-file"
                                 className={`w-full p-2 border rounded-md ${errors.resume && touched.resume
-                                        ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
-                                        : 'border-gray-300 dark:border-gray-600'
+                                    ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                                    : 'border-gray-300 dark:border-gray-600'
                                     }`}
                                 onChange={(event) => {
                                     const file = event.currentTarget.files?.[0]
