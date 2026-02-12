@@ -14,6 +14,23 @@ class UserProfile(models.Model):
     )
 
     # Basic profile info
+    ROLE_SUPER_ADMIN = "super_admin"
+    ROLE_ADMIN = "admin"
+    ROLE_RECRUITER = "recruiter"
+    ROLE_EMPLOYEE = "employee"
+    ROLE_CHOICES = [
+        (ROLE_SUPER_ADMIN, "Super Admin"),
+        (ROLE_ADMIN, "Admin"),
+        (ROLE_RECRUITER, "Recruiter"),
+        (ROLE_EMPLOYEE, "Employee"),
+    ]
+
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default=ROLE_EMPLOYEE,
+        help_text="RBAC role for application access",
+    )
     telephone = models.CharField(max_length=20, blank=True)
     avatar = models.FileField(
         upload_to="avatars/",

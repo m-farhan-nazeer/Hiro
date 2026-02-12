@@ -1,4 +1,4 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.exceptions import ValidationError
 from rest_framework.views import APIView
@@ -12,6 +12,7 @@ from .models import Application
 from .serializers import ApplicationSerializer, ApplicationCreateSerializer
 from applicants.models import Applicant
 from posts.models import Job
+from users.authentication import CsrfExemptSessionAuthentication
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +27,26 @@ class ApplicationListCreateAPIView(generics.ListCreateAPIView):
     1. ApplicationCreateSerializer format (name, email, resume_file, job) - for frontend submissions
     2. ApplicationSerializer format (applicant, job, resume_file) - for direct API calls
     """
+    authentication_classes = (CsrfExemptSessionAuthentication,)
     queryset = Application.objects.all().order_by("-date")
+    
+    def get_permissions(self):
+        if self.request.method == "POST":
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
     
     def get_queryset(self):
         """
         Optionally filter applications by job ID and/or status if provided in query parameters
         """
         queryset = super().get_queryset()
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return Application.objects.none()
+
+        visible_jobs = Job.objects.visible_to(user)
+        queryset = queryset.filter(job__in=visible_jobs)
+
         job_id = self.request.query_params.get('job', None)
         status = self.request.query_params.get('status', None)
         
@@ -105,8 +119,17 @@ class ApplicationRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIV
     PATCH /api/applications/<pk>/ -> Partial update
     DELETE /api/applications/<pk>/ -> Delete
     """
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    permission_classes = [permissions.IsAuthenticated]
     queryset = Application.objects.all()
     serializer_class = ApplicationSerializer
+    
+    def get_queryset(self):
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return Application.objects.none()
+        visible_jobs = Job.objects.visible_to(user)
+        return super().get_queryset().filter(job__in=visible_jobs)
     
     def update(self, request, *args, **kwargs):
         """Handle update with proper error handling"""
@@ -134,19 +157,23 @@ class CustomerStatisticAPIView(APIView):
     """
     GET /api/crm/customers-statistic -> Get applicant statistics
     """
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    permission_classes = [permissions.IsAuthenticated]
+
     def get(self, request):
+        visible_jobs = Job.objects.visible_to(request.user)
+        applicant_qs = Applicant.objects.filter(applications__job__in=visible_jobs).distinct()
+
         # Get total applicants count (unique applicants who have applications)
-        total_applicants = Applicant.objects.filter(
-            applications__isnull=False
-        ).distinct().count()
+        total_applicants = applicant_qs.count()
         
         # Get shortlisted count (unique applicants with shortlisted applications)
-        shortlisted_count = Applicant.objects.filter(
+        shortlisted_count = applicant_qs.filter(
             applications__status='shortlisted'
         ).distinct().count()
         
         # Get hired count (unique applicants with hired applications)
-        hired_count = Applicant.objects.filter(
+        hired_count = applicant_qs.filter(
             applications__status='hired'
         ).distinct().count()
         
@@ -155,12 +182,12 @@ class CustomerStatisticAPIView(APIView):
         six_months_ago = (timezone.now() - timedelta(days=180)).date()
         
         # Total applicants in last 3 months
-        recent_total = Applicant.objects.filter(
+        recent_total = applicant_qs.filter(
             applications__date__gte=three_months_ago
         ).distinct().count()
         
         # Total applicants in previous 3 months
-        previous_total = Applicant.objects.filter(
+        previous_total = applicant_qs.filter(
             applications__date__gte=six_months_ago,
             applications__date__lt=three_months_ago
         ).distinct().count()
@@ -168,12 +195,12 @@ class CustomerStatisticAPIView(APIView):
         total_growth = ((recent_total - previous_total) / previous_total * 100) if previous_total > 0 else 0
         
         # Shortlisted growth
-        recent_shortlisted = Applicant.objects.filter(
+        recent_shortlisted = applicant_qs.filter(
             applications__status='shortlisted',
             applications__date__gte=three_months_ago
         ).distinct().count()
         
-        previous_shortlisted = Applicant.objects.filter(
+        previous_shortlisted = applicant_qs.filter(
             applications__status='shortlisted',
             applications__date__gte=six_months_ago,
             applications__date__lt=three_months_ago
@@ -182,12 +209,12 @@ class CustomerStatisticAPIView(APIView):
         shortlisted_growth = ((recent_shortlisted - previous_shortlisted) / previous_shortlisted * 100) if previous_shortlisted > 0 else 0
         
         # Hired growth
-        recent_hired = Applicant.objects.filter(
+        recent_hired = applicant_qs.filter(
             applications__status='hired',
             applications__date__gte=three_months_ago
         ).distinct().count()
         
-        previous_hired = Applicant.objects.filter(
+        previous_hired = applicant_qs.filter(
             applications__status='hired',
             applications__date__gte=six_months_ago,
             applications__date__lt=three_months_ago
@@ -215,36 +242,41 @@ class SalesDashboardAPIView(APIView):
     """
     POST /api/sales/dashboard -> Get dashboard data
     """
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request):
+        visible_jobs = Job.objects.visible_to(request.user)
+        application_qs = Application.objects.filter(job__in=visible_jobs)
+        applicant_qs = Applicant.objects.filter(applications__job__in=visible_jobs).distinct()
+
         # Statistics
-        total_applicants = Applicant.objects.filter(
-            applications__isnull=False
-        ).distinct().count()
-        active_jobs = Job.objects.filter(status='active').count()
-        hired_count = Application.objects.filter(status='hired').count()
+        total_applicants = applicant_qs.count()
+        active_jobs = visible_jobs.filter(status='active').count()
+        hired_count = application_qs.filter(status='hired').count()
         
         # Calculate growth (last 3 months vs previous 3 months)
         three_months_ago = (timezone.now() - timedelta(days=90)).date()
         six_months_ago = (timezone.now() - timedelta(days=180)).date()
         
-        recent_applicants = Applicant.objects.filter(
+        recent_applicants = applicant_qs.filter(
             applications__date__gte=three_months_ago
         ).distinct().count()
-        previous_applicants = Applicant.objects.filter(
+        previous_applicants = applicant_qs.filter(
             applications__date__gte=six_months_ago,
             applications__date__lt=three_months_ago
         ).distinct().count()
         applicants_growth = ((recent_applicants - previous_applicants) / previous_applicants * 100) if previous_applicants > 0 else 0
         
-        recent_jobs = Job.objects.filter(date__gte=three_months_ago).count()
-        previous_jobs = Job.objects.filter(
+        recent_jobs = visible_jobs.filter(date__gte=three_months_ago).count()
+        previous_jobs = visible_jobs.filter(
             date__gte=six_months_ago,
             date__lt=three_months_ago
         ).count()
         jobs_growth = ((recent_jobs - previous_jobs) / previous_jobs * 100) if previous_jobs > 0 else 0
         
-        recent_hired = Application.objects.filter(status='hired', date__gte=three_months_ago).count()
-        previous_hired = Application.objects.filter(
+        recent_hired = application_qs.filter(status='hired', date__gte=three_months_ago).count()
+        previous_hired = application_qs.filter(
             status='hired',
             date__gte=six_months_ago,
             date__lt=three_months_ago
@@ -252,7 +284,7 @@ class SalesDashboardAPIView(APIView):
         hired_growth = ((recent_hired - previous_hired) / previous_hired * 100) if previous_hired > 0 else 0
         
         # Latest applicants (last 4 applications)
-        latest_applications = Application.objects.select_related('applicant', 'job').order_by('-date')[:4]
+        latest_applications = application_qs.select_related('applicant', 'job').order_by('-date')[:4]
         latest_applicant_data = [{
             'name': app.applicant.name,
             'email': app.applicant.email,
@@ -263,7 +295,7 @@ class SalesDashboardAPIView(APIView):
         } for app in latest_applications]
         
         # Latest jobs (last 3 jobs with applicant count)
-        latest_jobs = Job.objects.annotate(
+        latest_jobs = visible_jobs.annotate(
             total_applicants=Count('applications')
         ).order_by('-date')[:3]
         job_data = [{
@@ -288,11 +320,11 @@ class SalesDashboardAPIView(APIView):
             month_end = month_start + timedelta(days=30)
             month_name = month_start.strftime('%b')
             months.append(month_name)
-            count = Application.objects.filter(date__gte=month_start, date__lt=month_end).count()
+            count = application_qs.filter(date__gte=month_start, date__lt=month_end).count()
             application_counts.append(count)
         
         # Recruitment by categories (by application status: hired, shortlisted, pending, rejected)
-        status_counts = Application.objects.values('status').annotate(
+        status_counts = application_qs.values('status').annotate(
             count=Count('id')
         )
         
@@ -343,7 +375,12 @@ def application_resume(request, pk):
     Return the resume stored as BLOB for this application.
     URL: /api/applications/<pk>/resume/
     """
+    if not request.user or not request.user.is_authenticated:
+        return HttpResponse(status=403)
+
     application = get_object_or_404(Application, pk=pk)
+    if not Job.objects.visible_to(request.user).filter(id=application.job_id).exists():
+        return HttpResponse(status=404)
 
     if not application.resume:
         return HttpResponse(status=404)

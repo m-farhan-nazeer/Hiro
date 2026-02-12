@@ -9,6 +9,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = [
+            "role",
             "telephone",
             "avatar",
             "department",
@@ -17,7 +18,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "timezone",
             "password_last_changed",
         ]
-        read_only_fields = ["password_last_changed"]
+        read_only_fields = ["password_last_changed", "role"]
 
 
 class UserSerializer(serializers.ModelSerializer):

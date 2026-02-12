@@ -9,7 +9,7 @@ import {
 } from '@/store'
 import appConfig from '@/configs/app.config'
 import { REDIRECT_URL_KEY } from '@/constants/app.constant'
-import { USER } from '@/constants/roles.constant'
+import { ADMIN, USER } from '@/constants/roles.constant'
 import { useNavigate } from 'react-router-dom'
 import useQuery from './useQuery'
 import type { SignInCredential, SignUpCredential } from '@/@types/auth'
@@ -26,6 +26,13 @@ function useAuth() {
     const { signedIn } = useAppSelector((state) => state.auth.session)
     const user = useAppSelector((state) => state.auth.user)
 
+    const resolveAuthority = (role?: string) => {
+        if (role === ADMIN || role === 'super_admin') {
+            return [ADMIN]
+        }
+        return [USER]
+    }
+
     // Check for existing session on app load
     useEffect(() => {
         const checkSession = async () => {
@@ -40,7 +47,7 @@ function useAuth() {
                             setUser({
                                 avatar: resp.data.profile?.avatar || '',
                                 userName: resp.data.username || 'Anonymous',
-                                authority: [USER],
+                                authority: resolveAuthority(resp.data.profile?.role),
                                 email: resp.data.email || '',
                             })
                         )
@@ -90,7 +97,7 @@ function useAuth() {
                 setUser({
                     avatar: resp.data.profile?.avatar || '',
                     userName: resp.data.username || 'Anonymous',
-                    authority: [USER],
+                    authority: resolveAuthority(resp.data.profile?.role),
                     email: resp.data.email || '',
                 })
             )
@@ -165,7 +172,7 @@ function useAuth() {
                         setUser({
                             avatar: loginResp.data.profile?.avatar || '',
                             userName: loginResp.data.username || 'Anonymous',
-                            authority: [USER],
+                            authority: resolveAuthority(loginResp.data.profile?.role),
                             email: loginResp.data.email || '',
                         })
                     )
