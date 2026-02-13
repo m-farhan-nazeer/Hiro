@@ -9,6 +9,8 @@ import NewTaskField from './NewTaskField'
 import { Field, Form, Formik, FieldProps } from 'formik'
 import { HiCheck } from 'react-icons/hi'
 import { components, MultiValueGenericProps, OptionProps } from 'react-select'
+import CreatableSelect from 'react-select/creatable'
+import { SKILL_OPTIONS } from '@/constants/skills.constant'
 import {
     getMembers,
     putProject,
@@ -122,15 +124,7 @@ const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewPr
         { value: 'part-time', label: 'Part-time' },
         { value: 'full-time', label: 'Full-time' },
     ];
-    const skillOptions = [
-        { value: 'JavaScript', label: 'JavaScript' },
-        { value: 'Python', label: 'Python' },
-        { value: 'React', label: 'React' },
-        { value: 'Django', label: 'Django' },
-        { value: 'SQL', label: 'SQL' },
-        { value: 'Node.js', label: 'Node.js' },
-        // Add more skills as needed
-    ];
+    const skillOptions = SKILL_OPTIONS;
     const dispatch = useAppDispatch()
 
     const members = useAppSelector((state) => state.projectList.data.allMembers)
@@ -338,9 +332,13 @@ const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewPr
                                 {({ field, form }: FieldProps) => (
                                     <Select
                                         isMulti
+                                        componentAs={CreatableSelect}
                                         className="min-w-[120px]"
                                         options={skillOptions}
-                                        value={skillOptions.filter(opt => field.value.includes(opt.value))}
+                                        value={skillOptions.filter(opt => field.value.includes(opt.value)).concat(
+                                            field.value.filter((val: string) => !skillOptions.find(opt => opt.value === val))
+                                                .map((val: string) => ({ value: val, label: val }))
+                                        )}
                                         onChange={option => form.setFieldValue(field.name, Array.isArray(option) ? option.map((o: any) => o.value) : [])}
                                     />
                                 )}

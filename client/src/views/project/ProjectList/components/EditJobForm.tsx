@@ -5,6 +5,8 @@ import Button from '@/components/ui/Button'
 import Select from '@/components/ui/Select'
 import { Field, Form, Formik, FieldProps } from 'formik'
 import { updateJob } from '@/services/JobServices'
+import CreatableSelect from 'react-select/creatable'
+import { SKILL_OPTIONS } from '@/constants/skills.constant'
 import * as Yup from 'yup'
 import './hide-scrollbar.css'
 
@@ -15,7 +17,7 @@ type JobData = {
     status: string;
     jobtype: string;
     jobtime: string;
-    required_skills: string; 
+    required_skills: string;
     domain: string;
 }
 
@@ -60,15 +62,7 @@ const EditJobForm = ({ job, onClose, onJobUpdated }: EditJobFormProps) => {
         { value: 'part-time', label: 'Part-time' },
         { value: 'full-time', label: 'Full-time' },
     ];
-    const skillOptions = [
-        { value: 'JavaScript', label: 'JavaScript' },
-        { value: 'Python', label: 'Python' },
-        { value: 'React', label: 'React' },
-        { value: 'Django', label: 'Django' },
-        { value: 'SQL', label: 'SQL' },
-        { value: 'Node.js', label: 'Node.js' },
-        // Add more skills as needed
-    ];
+    const skillOptions = SKILL_OPTIONS;
 
     // Parse the required_skills string into an array
     const initialSkills = job.required_skills ? job.required_skills.split(',').map(s => s.trim()) : [];
@@ -78,7 +72,7 @@ const EditJobForm = ({ job, onClose, onJobUpdated }: EditJobFormProps) => {
 
         try {
             const { title, status, domain, description, jobType, jobTime, requiredSkills } = formValue
-            
+
             const jobData = {
                 title,
                 description,
@@ -88,7 +82,7 @@ const EditJobForm = ({ job, onClose, onJobUpdated }: EditJobFormProps) => {
                 required_skills: requiredSkills.join(', '),
                 domain,
             }
-            
+
             await updateJob(job.id, jobData)
             onJobUpdated?.()
             onClose()
@@ -101,7 +95,7 @@ const EditJobForm = ({ job, onClose, onJobUpdated }: EditJobFormProps) => {
     }
 
     return (
-        <Formik 
+        <Formik
             initialValues={{
                 title: job.title,
                 status: job.status,
@@ -210,9 +204,13 @@ const EditJobForm = ({ job, onClose, onJobUpdated }: EditJobFormProps) => {
                                 {({ field, form }: FieldProps) => (
                                     <Select
                                         isMulti
+                                        componentAs={CreatableSelect}
                                         className="min-w-[120px]"
                                         options={skillOptions}
-                                        value={skillOptions.filter(opt => field.value.includes(opt.value))}
+                                        value={skillOptions.filter(opt => field.value.includes(opt.value)).concat(
+                                            field.value.filter((val: string) => !skillOptions.find(opt => opt.value === val))
+                                                .map((val: string) => ({ value: val, label: val }))
+                                        )}
                                         onChange={option => form.setFieldValue(field.name, Array.isArray(option) ? option.map((o: any) => o.value) : [])}
                                     />
                                 )}
@@ -233,18 +231,18 @@ const EditJobForm = ({ job, onClose, onJobUpdated }: EditJobFormProps) => {
                             />
                         </FormItem>
                         <div className="flex gap-2">
-                            <Button 
-                                block 
-                                variant="solid" 
+                            <Button
+                                block
+                                variant="solid"
                                 type="submit"
                                 loading={isSubmitting}
                                 disabled={isSubmitting}
                             >
                                 Update Job
                             </Button>
-                            <Button 
-                                block 
-                                variant="plain" 
+                            <Button
+                                block
+                                variant="plain"
                                 type="button"
                                 onClick={onClose}
                             >
