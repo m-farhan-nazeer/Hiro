@@ -64,6 +64,13 @@ class Job(models.Model):
         help_text="The user who posted this job",
     )
 
+    # Scoring weights (sum must be 100)
+    weight_experience = models.FloatField(default=5)
+    weight_skills = models.FloatField(default=25)
+    weight_projects = models.FloatField(default=50)
+    weight_education = models.FloatField(default=10)
+    weight_institute = models.FloatField(default=10)
+
     objects = JobQuerySet.as_manager()
 
     def total_applicants(self):

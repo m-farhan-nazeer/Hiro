@@ -87,7 +87,16 @@ def process_application_all_in_one(applicant_id: int, application_id: int) -> No
                 tmp_file.write(application.resume)
                 tmp_path = tmp_file.name
 
-            generated_score = rank_resume_against_job(tmp_path)
+            # Extract custom weights from job
+            weights = {
+                "experience": job.weight_experience,
+                "skills": job.weight_skills,
+                "projects": job.weight_projects,
+                "education": job.weight_education,
+                "institute": job.weight_institute,
+            }
+
+            generated_score = rank_resume_against_job(tmp_path, custom_weights=weights)
             application.score = generated_score
             application.save(update_fields=["score"])
             logger.info(f"Updated application {application_id} with score: {generated_score}")

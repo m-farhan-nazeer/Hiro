@@ -19,6 +19,11 @@ type JobData = {
     jobtime: string;
     required_skills: string;
     domain: string;
+    weight_experience: number;
+    weight_skills: number;
+    weight_projects: number;
+    weight_education: number;
+    weight_institute: number;
 }
 
 type FormModel = {
@@ -29,6 +34,11 @@ type FormModel = {
     jobType: string
     jobTime: string
     requiredSkills: string[]
+    weightExperience: number
+    weightSkills: number
+    weightProjects: number
+    weightEducation: number
+    weightInstitute: number
 }
 
 type EditJobFormProps = {
@@ -45,6 +55,11 @@ const validationSchema = Yup.object().shape({
     jobType: Yup.string().oneOf(['remote', 'onsite']).required('Job type required'),
     jobTime: Yup.string().oneOf(['part-time', 'full-time']).required('Job time required'),
     requiredSkills: Yup.array().of(Yup.string()).min(1, 'At least one skill required'),
+    weightExperience: Yup.number().min(0).max(100).required(),
+    weightSkills: Yup.number().min(0).max(100).required(),
+    weightProjects: Yup.number().min(0).max(100).required(),
+    weightEducation: Yup.number().min(0).max(100).required(),
+    weightInstitute: Yup.number().min(0).max(100).required(),
 })
 
 const EditJobForm = ({ job, onClose, onJobUpdated }: EditJobFormProps) => {
@@ -81,6 +96,11 @@ const EditJobForm = ({ job, onClose, onJobUpdated }: EditJobFormProps) => {
                 jobtime: jobTime,
                 required_skills: requiredSkills.join(', '),
                 domain,
+                weight_experience: formValue.weightExperience,
+                weight_skills: formValue.weightSkills,
+                weight_projects: formValue.weightProjects,
+                weight_education: formValue.weightEducation,
+                weight_institute: formValue.weightInstitute,
             }
 
             await updateJob(job.id, jobData)
@@ -104,6 +124,11 @@ const EditJobForm = ({ job, onClose, onJobUpdated }: EditJobFormProps) => {
                 jobType: job.jobtype,
                 jobTime: job.jobtime,
                 requiredSkills: initialSkills,
+                weightExperience: job.weight_experience,
+                weightSkills: job.weight_skills,
+                weightProjects: job.weight_projects,
+                weightEducation: job.weight_education,
+                weightInstitute: job.weight_institute,
             }}
             validationSchema={validationSchema}
             onSubmit={onSubmit}
@@ -230,6 +255,30 @@ const EditJobForm = ({ job, onClose, onJobUpdated }: EditJobFormProps) => {
                                 component={Input}
                             />
                         </FormItem>
+
+                        <div className="mt-6 mb-4">
+                            <h6 className="mb-4">Scoring Strategy (Weights must sum to 100%)</h6>
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormItem label="Experience %">
+                                    <Field name="weightExperience" component={Input} type="number" />
+                                </FormItem>
+                                <FormItem label="Skills %">
+                                    <Field name="weightSkills" component={Input} type="number" />
+                                </FormItem>
+                                <FormItem label="Projects %">
+                                    <Field name="weightProjects" component={Input} type="number" />
+                                </FormItem>
+                                <FormItem label="Education %">
+                                    <Field name="weightEducation" component={Input} type="number" />
+                                </FormItem>
+                                <FormItem label="Institute %" className="col-span-2">
+                                    <Field name="weightInstitute" component={Input} type="number" />
+                                </FormItem>
+                            </div>
+                            <div className={`mt-2 text-sm font-semibold ${(values.weightExperience + values.weightSkills + values.weightProjects + values.weightEducation + values.weightInstitute) === 100 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                Total: {values.weightExperience + values.weightSkills + values.weightProjects + values.weightEducation + values.weightInstitute}%
+                            </div>
+                        </div>
                         <div className="flex gap-2">
                             <Button
                                 block

@@ -40,6 +40,11 @@ type FormModel = {
         name: string
         label: string
     }[]
+    weightExperience: number
+    weightSkills: number
+    weightProjects: number
+    weightEducation: number
+    weightInstitute: number
 }
 
 type TaskCount = {
@@ -104,6 +109,11 @@ const getValidationSchema = (isEditMode: boolean) => Yup.object().shape({
     jobType: Yup.string().oneOf(['remote', 'onsite']).required('Job type required'),
     jobTime: Yup.string().oneOf(['part-time', 'full-time']).required('Job time required'),
     requiredSkills: Yup.array().of(Yup.string()).min(1, 'At least one skill required'),
+    weightExperience: Yup.number().min(0).max(100).required(),
+    weightSkills: Yup.number().min(0).max(100).required(),
+    weightProjects: Yup.number().min(0).max(100).required(),
+    weightEducation: Yup.number().min(0).max(100).required(),
+    weightInstitute: Yup.number().min(0).max(100).required(),
     rememberMe: Yup.bool(),
 })
 
@@ -166,6 +176,11 @@ const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewPr
                 jobtime: jobTime,
                 required_skills: requiredSkills.join(', '),
                 domain,
+                weight_experience: formValue.weightExperience,
+                weight_skills: formValue.weightSkills,
+                weight_projects: formValue.weightProjects,
+                weight_education: formValue.weightEducation,
+                weight_institute: formValue.weightInstitute,
             }
 
             const createdJob = await createJob(jobData)
@@ -234,6 +249,11 @@ const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewPr
                 jobTime: initialData?.jobTime || '',
                 requiredSkills: initialData?.requiredSkills || [],
                 assignees: initialData?.assignees || [],
+                weightExperience: initialData?.weightExperience || 5,
+                weightSkills: initialData?.weightSkills || 25,
+                weightProjects: initialData?.weightProjects || 50,
+                weightEducation: initialData?.weightEducation || 10,
+                weightInstitute: initialData?.weightInstitute || 10,
             }}
             validationSchema={getValidationSchema(isEditMode)}
             onSubmit={(values, { setSubmitting }) => {
@@ -398,6 +418,31 @@ const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewPr
                                 component={Input}
                             />
                         </FormItem>
+
+                        <div className="mt-6 mb-4">
+                            <h6 className="mb-4">Scoring Strategy (Weights must sum to 100%)</h6>
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormItem label="Experience %">
+                                    <Field name="weightExperience" component={Input} type="number" />
+                                </FormItem>
+                                <FormItem label="Skills %">
+                                    <Field name="weightSkills" component={Input} type="number" />
+                                </FormItem>
+                                <FormItem label="Projects %">
+                                    <Field name="weightProjects" component={Input} type="number" />
+                                </FormItem>
+                                <FormItem label="Education %">
+                                    <Field name="weightEducation" component={Input} type="number" />
+                                </FormItem>
+                                <FormItem label="Institute %" className="col-span-2">
+                                    <Field name="weightInstitute" component={Input} type="number" />
+                                </FormItem>
+                            </div>
+                            <div className={`mt-2 text-sm font-semibold ${(values.weightExperience + values.weightSkills + values.weightProjects + values.weightEducation + values.weightInstitute) === 100 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                Total: {values.weightExperience + values.weightSkills + values.weightProjects + values.weightEducation + values.weightInstitute}%
+                            </div>
+                        </div>
+
                         {/* <NewTaskField onAddNewTask={handleAddNewTask} /> */}
                         <Button block variant="solid" type="submit">
                             {isEditMode ? 'Update' : 'Post'}
