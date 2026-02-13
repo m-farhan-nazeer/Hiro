@@ -74,10 +74,12 @@ const ApplicantProfileModal = ({
     const [skillsExpanded, setSkillsExpanded] = useState(false)
     const [activeTab, setActiveTab] = useState<'resume' | 'social'>('resume')
 
-    const fetchProfile = async () => {
+    const fetchProfile = async (options?: { silent?: boolean }) => {
         if (!applicantId) return
 
-        setLoading(true)
+        if (!options?.silent) {
+            setLoading(true)
+        }
         setError(null)
 
         try {
@@ -90,7 +92,9 @@ const ApplicantProfileModal = ({
             setError(err.response?.data?.error || 'Failed to load profile')
             console.error('Profile fetch error:', err)
         } finally {
-            setLoading(false)
+            if (!options?.silent) {
+                setLoading(false)
+            }
         }
     }
 
@@ -126,7 +130,7 @@ const ApplicantProfileModal = ({
                 method: 'post'
             })
             // Fetch profile immediately to update status to processing
-            fetchProfile()
+            fetchProfile({ silent: true })
         } catch (err: any) {
             console.error('Social fetch error:', err)
         } finally {
@@ -151,7 +155,7 @@ const ApplicantProfileModal = ({
 
         if (isOpen && applicantId && profile?.linkedin_scrape_status === 'processing') {
             interval = setInterval(() => {
-                fetchProfile()
+                fetchProfile({ silent: true })
             }, 5000)
         }
 
