@@ -67,6 +67,7 @@ export type Application = {
     job: number
     job_title: string
     score: string | null
+    scoring_status: 'pending' | 'processing' | 'completed' | 'failed'
     status: string
     date: string
     has_resume: boolean
@@ -152,11 +153,11 @@ export const getCustomers = createAsyncThunk(
 
 export const getApplications = createAsyncThunk(
     'crmCustomers/data/getApplications',
-    async (params?: { jobId?: string | number; status?: string }) => {
+    async (params?: { jobId?: string | number; status?: string; silent?: boolean }) => {
         const jobId = params?.jobId
         const status = params?.status
         const applications = await listApplications(jobId, status)
-        return applications as Application[]
+        return { applications: applications as Application[], silent: params?.silent }
     }
 )
 
@@ -246,12 +247,15 @@ const customersSlice = createSlice({
                 state.statisticLoading = true
             })
             .addCase(getApplications.fulfilled, (state, action) => {
-                state.applicationList = action.payload
-                state.tableData.total = action.payload.length
+                state.applicationList = action.payload.applications
+                state.tableData.total = action.payload.applications.length
                 state.loading = false
             })
-            .addCase(getApplications.pending, (state) => {
-                state.loading = true
+            .addCase(getApplications.pending, (state, action) => {
+                const isSilent = action.meta.arg?.silent
+                if (!isSilent) {
+                    state.loading = true
+                }
             })
             .addCase(updateApplicationStatus.fulfilled, (state, action) => {
                 // Update the application in the list

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { APP_PREFIX_PATH } from '@/constants/route.constant'
 import Button from '@/components/ui/Button'
+import Notification from '@/components/ui/Notification'
+import toast from '@/components/ui/toast'
 import AdaptableCard from '@/components/shared/AdaptableCard'
 import CustomersTable from '../../../crm/Customers/components/CustomersTable'
 import CustomersTableTools from '../../../crm/Customers/components/CustomersTableTools'
@@ -44,13 +46,19 @@ const Applicants = () => {
         const link = `${window.location.origin}/apply?id=${jobId}`
         try {
             await navigator.clipboard.writeText(link)
-            // small confirmation
-            // eslint-disable-next-line no-alert
-            alert('Application link copied to clipboard')
+            toast.push(
+                <Notification title="Link Copied" type="success">
+                    Application link copied to clipboard
+                </Notification>,
+                { placement: 'top-center' }
+            )
         } catch (err) {
-            // fallback: open a prompt so user can copy
-            // eslint-disable-next-line no-alert
-            prompt('Copy application link', link)
+            toast.push(
+                <Notification title="Copy Failed" type="danger">
+                    Please copy the link manually: {link}
+                </Notification>,
+                { placement: 'top-center' }
+            )
         }
     }
 

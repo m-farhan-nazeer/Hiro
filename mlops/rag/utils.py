@@ -115,9 +115,21 @@ def store_job_description(job_text: str):
 # -----------------------------
 # MAIN RANKING FUNCTION
 # -----------------------------
-def rank_resume_against_job(file_path):
+def rank_resume_against_job(file_path, custom_weights=None):
 
     print("\n📄 Processing Resume...\n")
+
+    # Use custom weights if provided, else defaults from config
+    weights = custom_weights if custom_weights else CATEGORY_WEIGHTS
+    
+    # Ensure weights are in 0-1 range for calculation
+    # (they might come as 0-100 from frontend)
+    normalized_weights = {}
+    for cat, w in weights.items():
+        if w > 1:
+            normalized_weights[cat] = w / 100.0
+        else:
+            normalized_weights[cat] = w
 
     # Load + chunk resume
     documents = load_single_file(file_path)
@@ -167,7 +179,7 @@ def rank_resume_against_job(file_path):
     final_score = 0
     for cat, sims in category_scores.items():
         avg_sim = sum(sims) / len(sims) if sims else 0
-        final_score += avg_sim * CATEGORY_WEIGHTS[cat]
+        final_score += avg_sim * normalized_weights.get(cat, 0)
 
     final_score = round(final_score * 100, 2)
 

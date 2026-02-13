@@ -4,11 +4,15 @@ import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import Select from '@/components/ui/Select'
 import Avatar from '@/components/ui/Avatar'
+import Notification from '@/components/ui/Notification'
+import toast from '@/components/ui/toast'
 import hooks from '@/components/ui/hooks'
 import NewTaskField from './NewTaskField'
 import { Field, Form, Formik, FieldProps } from 'formik'
 import { HiCheck } from 'react-icons/hi'
 import { components, MultiValueGenericProps, OptionProps } from 'react-select'
+import CreatableSelect from 'react-select/creatable'
+import { SKILL_OPTIONS } from '@/constants/skills.constant'
 import {
     getMembers,
     putProject,
@@ -36,6 +40,11 @@ type FormModel = {
         name: string
         label: string
     }[]
+    weightExperience: number
+    weightSkills: number
+    weightProjects: number
+    weightEducation: number
+    weightInstitute: number
 }
 
 type TaskCount = {
@@ -100,6 +109,11 @@ const getValidationSchema = (isEditMode: boolean) => Yup.object().shape({
     jobType: Yup.string().oneOf(['remote', 'onsite']).required('Job type required'),
     jobTime: Yup.string().oneOf(['part-time', 'full-time']).required('Job time required'),
     requiredSkills: Yup.array().of(Yup.string()).min(1, 'At least one skill required'),
+    weightExperience: Yup.number().min(0).max(100).required(),
+    weightSkills: Yup.number().min(0).max(100).required(),
+    weightProjects: Yup.number().min(0).max(100).required(),
+    weightEducation: Yup.number().min(0).max(100).required(),
+    weightInstitute: Yup.number().min(0).max(100).required(),
     rememberMe: Yup.bool(),
 })
 
@@ -122,15 +136,7 @@ const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewPr
         { value: 'part-time', label: 'Part-time' },
         { value: 'full-time', label: 'Full-time' },
     ];
-    const skillOptions = [
-        { value: 'JavaScript', label: 'JavaScript' },
-        { value: 'Python', label: 'Python' },
-        { value: 'React', label: 'React' },
-        { value: 'Django', label: 'Django' },
-        { value: 'SQL', label: 'SQL' },
-        { value: 'Node.js', label: 'Node.js' },
-        // Add more skills as needed
-    ];
+    const skillOptions = SKILL_OPTIONS;
     const dispatch = useAppDispatch()
 
     const members = useAppSelector((state) => state.projectList.data.allMembers)
@@ -170,6 +176,11 @@ const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewPr
                 jobtime: jobTime,
                 required_skills: requiredSkills.join(', '),
                 domain,
+                weight_experience: formValue.weightExperience,
+                weight_skills: formValue.weightSkills,
+                weight_projects: formValue.weightProjects,
+                weight_education: formValue.weightEducation,
+                weight_institute: formValue.weightInstitute,
             }
 
             const createdJob = await createJob(jobData)
@@ -179,12 +190,19 @@ const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewPr
                 const appLink = `${window.location.origin}/apply?id=${createdJob.id}`
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     await navigator.clipboard.writeText(appLink)
-                    // eslint-disable-next-line no-alert
-                    alert('Job created. Application link copied to clipboard')
+                    toast.push(
+                        <Notification title="Job Created" type="success">
+                            Application link copied to clipboard
+                        </Notification>,
+                        { placement: 'top-center' }
+                    )
                 } else {
-                    // fallback prompt
-                    // eslint-disable-next-line no-alert
-                    prompt('Job created. Copy application link', appLink)
+                    toast.push(
+                        <Notification title="Job Created" type="success">
+                            Job ID: {createdJob.id}. Please copy the link manually: {appLink}
+                        </Notification>,
+                        { placement: 'top-center' }
+                    )
                 }
             } catch (err) {
                 // ignore clipboard errors but still continue
@@ -231,6 +249,11 @@ const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewPr
                 jobTime: initialData?.jobTime || '',
                 requiredSkills: initialData?.requiredSkills || [],
                 assignees: initialData?.assignees || [],
+                weightExperience: initialData?.weightExperience || 5,
+                weightSkills: initialData?.weightSkills || 25,
+                weightProjects: initialData?.weightProjects || 50,
+                weightEducation: initialData?.weightEducation || 10,
+                weightInstitute: initialData?.weightInstitute || 10,
             }}
             validationSchema={getValidationSchema(isEditMode)}
             onSubmit={(values, { setSubmitting }) => {
@@ -338,9 +361,13 @@ const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewPr
                                 {({ field, form }: FieldProps) => (
                                     <Select
                                         isMulti
+                                        componentAs={CreatableSelect}
                                         className="min-w-[120px]"
                                         options={skillOptions}
-                                        value={skillOptions.filter(opt => field.value.includes(opt.value))}
+                                        value={skillOptions.filter(opt => field.value.includes(opt.value)).concat(
+                                            field.value.filter((val: string) => !skillOptions.find(opt => opt.value === val))
+                                                .map((val: string) => ({ value: val, label: val }))
+                                        )}
                                         onChange={option => form.setFieldValue(field.name, Array.isArray(option) ? option.map((o: any) => o.value) : [])}
                                     />
                                 )}
@@ -391,6 +418,31 @@ const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewPr
                                 component={Input}
                             />
                         </FormItem>
+
+                        <div className="mt-6 mb-4">
+                            <h6 className="mb-4">Scoring Strategy (Weights must sum to 100%)</h6>
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormItem label="Experience %">
+                                    <Field name="weightExperience" component={Input} type="number" />
+                                </FormItem>
+                                <FormItem label="Skills %">
+                                    <Field name="weightSkills" component={Input} type="number" />
+                                </FormItem>
+                                <FormItem label="Projects %">
+                                    <Field name="weightProjects" component={Input} type="number" />
+                                </FormItem>
+                                <FormItem label="Education %">
+                                    <Field name="weightEducation" component={Input} type="number" />
+                                </FormItem>
+                                <FormItem label="Institute %" className="col-span-2">
+                                    <Field name="weightInstitute" component={Input} type="number" />
+                                </FormItem>
+                            </div>
+                            <div className={`mt-2 text-sm font-semibold ${(values.weightExperience + values.weightSkills + values.weightProjects + values.weightEducation + values.weightInstitute) === 100 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                Total: {values.weightExperience + values.weightSkills + values.weightProjects + values.weightEducation + values.weightInstitute}%
+                            </div>
+                        </div>
+
                         {/* <NewTaskField onAddNewTask={handleAddNewTask} /> */}
                         <Button block variant="solid" type="submit">
                             {isEditMode ? 'Update' : 'Post'}

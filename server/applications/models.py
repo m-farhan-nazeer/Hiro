@@ -11,6 +11,13 @@ class Application(models.Model):
         ("hired", "Hired"),
     ]
 
+    SCORING_STATUS_CHOICES = [
+        ("pending", "Pending"),
+        ("processing", "Processing"),
+        ("completed", "Completed"),
+        ("failed", "Failed"),
+    ]
+
     applicant = models.ForeignKey(
         Applicant,
         on_delete=models.CASCADE,
@@ -26,6 +33,11 @@ class Application(models.Model):
         max_digits=5,
         decimal_places=2,
         default=0,
+    )
+    scoring_status = models.CharField(
+        max_length=20,
+        choices=SCORING_STATUS_CHOICES,
+        default="pending",
     )
     status = models.CharField(
         max_length=20,

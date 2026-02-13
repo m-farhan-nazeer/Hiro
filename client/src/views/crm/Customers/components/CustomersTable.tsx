@@ -22,6 +22,9 @@ import dayjs from 'dayjs'
 import cloneDeep from 'lodash/cloneDeep'
 import type { OnSortParam, ColumnDef } from '@/components/shared/DataTable'
 import type { SingleValue } from 'react-select'
+import CustomersTableTools from '../../../crm/Customers/components/CustomersTableTools'
+import Spinner from '@/components/ui/Spinner'
+import { injectReducer } from '@/store'
 
 const statusColor: Record<string, string> = {
     hired: 'bg-emerald-500',
@@ -102,10 +105,11 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
     const [selectedApplicantName, setSelectedApplicantName] = useState<string>('')
     const [isProfileModalOpen, setIsProfileModalOpen] = useState(false)
 
-    const fetchData = useCallback(() => {
+    const fetchData = useCallback((options?: { silent?: boolean }) => {
         dispatch(getApplications({
             jobId: jobId ? Number(jobId) : undefined,
-            status: filterData.status
+            status: filterData.status,
+            silent: options?.silent
         }))
     }, [dispatch, jobId, filterData.status])
 
@@ -117,14 +121,11 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
             currentStatus: filterData.status
         })).then(() => {
             // Refresh the list after update to get latest data
-            dispatch(getApplications({
-                jobId: jobId ? Number(jobId) : undefined,
-                status: filterData.status
-            }))
+            fetchData()
         }).catch((error) => {
             console.error('Failed to update application status:', error)
         })
-    }, [dispatch, jobId, filterData.status])
+    }, [dispatch, jobId, filterData.status, fetchData])
 
     useEffect(() => {
         fetchData()
@@ -136,14 +137,14 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
         channel.onmessage = (event) => {
             if (event.data.type === 'REFETCH_APPLICATIONS') {
                 console.log('Received refetch signal from broadcast channel')
-                fetchData()
+                fetchData({ silent: true })
             }
         }
 
         // Refetch when window regains focus to ensure data is fresh
         const handleFocus = () => {
             console.log('Window focused, refetching applications')
-            fetchData()
+            fetchData({ silent: true })
         }
         window.addEventListener('focus', handleFocus)
 
@@ -152,6 +153,25 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
             window.removeEventListener('focus', handleFocus)
         }
     }, [fetchData])
+
+    // Polling logic for applications with pending/processing scoring status
+    useEffect(() => {
+        const needsPolling = data.some(
+            (app) => app.scoring_status === 'pending' || app.scoring_status === 'processing'
+        )
+
+        let timeout: NodeJS.Timeout
+        if (needsPolling && !loading) {
+            console.log('Detected applications needing scoring. Setting polling timeout...')
+            timeout = setTimeout(() => {
+                fetchData({ silent: true })
+            }, 5000) // Poll every 5 seconds
+        }
+
+        return () => {
+            if (timeout) clearTimeout(timeout)
+        }
+    }, [data, loading, fetchData])
 
     const tableData = useMemo(
         () => ({ pageIndex, pageSize, sort, query, total }),
@@ -220,7 +240,20 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
                 accessorKey: 'score',
                 cell: (props) => {
                     const row = props.row.original
-                    return <span>{row.score || 'N/A'}</span>
+                    const scoreValue = parseFloat(row.score || '0')
+
+                    if (row.scoring_status === 'processing' || (row.scoring_status === 'pending' && scoreValue === 0)) {
+                        return (
+                            <div className="flex items-center gap-2 text-blue-500 italic">
+                                <Spinner size={16} />
+                                <span>Calculating...</span>
+                            </div>
+                        )
+                    }
+                    if (row.scoring_status === 'failed' && scoreValue === 0) {
+                        return <span className="text-red-500 font-semibold">Failed</span>
+                    }
+                    return <span className="font-bold text-gray-800 dark:text-gray-200">{row.score || '0.00'}</span>
                 },
             },
             {
@@ -255,25 +288,8 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
                     return <span className="text-gray-400">No Resume</span>
                 },
             },
-            // {
-            //     header: 'Last online',
-            //     accessorKey: 'lastOnline',
-            //     cell: (props) => {
-            //         const row = props.row.original
-            //         return (
-            //             <div className="flex items-center">
-            //                 {dayjs.unix(row.lastOnline).format('MM/DD/YYYY')}
-            //             </div>
-            //         )
-            //     },
-            // },
-            // {
-            //     header: '',
-            //     id: 'action',
-            //     cell: (props) => <ActionColumn row={props.row.original} />,
-            // },
         ],
-        []
+        [handleStatusChange]
     )
 
     const onPaginationChange = (page: number) => {
