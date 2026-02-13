@@ -4,6 +4,7 @@ from dotenv import load_dotenv, find_dotenv
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_openai import OpenAIEmbeddings
 
+#test-commit
 from qdrant_client import QdrantClient
 
 load_dotenv(find_dotenv())
