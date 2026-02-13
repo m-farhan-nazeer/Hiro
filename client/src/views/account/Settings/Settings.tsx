@@ -43,8 +43,6 @@ const Password = lazy(() => import('./components/Password'))
 const NotificationSetting = lazy(
     () => import('./components/NotificationSetting')
 )
-const Integration = lazy(() => import('./components/Integration'))
-const Billing = lazy(() => import('./components/Billing'))
 
 const { TabNav, TabList } = Tabs
 
@@ -58,8 +56,6 @@ const settingsMenu: Record<
     profile: { label: 'Profile', path: 'profile' },
     password: { label: 'Password', path: 'password' },
     // notification: { label: 'Notification', path: 'notification' },
-    integration: { label: 'Integration', path: 'integration' },
-    billing: { label: 'Billing', path: 'billing' },
 }
 
 const Settings = () => {
@@ -110,13 +106,11 @@ const Settings = () => {
                             <Profile data={data.profile} />
                         )}
                         {currentTab === 'password' && (
-                            <Password data={data.loginHistory} />
+                            <Password />
                         )}
                         {currentTab === 'notification' && (
                             <NotificationSetting data={data.notification} />
                         )}
-                        {currentTab === 'integration' && <Integration />}
-                        {currentTab === 'billing' && <Billing />}
                     </Suspense>
                 </div>
             </AdaptableCard>

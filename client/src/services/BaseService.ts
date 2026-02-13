@@ -11,9 +11,7 @@ const BaseService = axios.create({
     timeout: 60000,
     baseURL: BACKEND_BASE_URL + appConfig.apiPrefix, // Points to http://127.0.0.1:8000/api
     withCredentials: true, // Include session cookies for Django
-    headers: {
-        'Content-Type': 'application/json',
-    },
+    headers: {},
 })
 
 // Response interceptor to handle 401/403 errors

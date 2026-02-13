@@ -39,6 +39,7 @@ from users.views import (
     MeView,
     ChangePasswordView,
     LoginHistoryView,
+    AccountSettingView,
 )
 
 router = DefaultRouter()
@@ -65,6 +66,8 @@ urlpatterns = [
     path("api/applicants/<int:applicant_id>/profile/", get_applicant_profile, name="applicant-profile"),
     path("api/applicants/<int:applicant_id>/profile/refresh/", refresh_applicant_profile, name="applicant-profile-refresh"),
     path("api/applicants/<int:applicant_id>/social-scrape/", scrape_social_profile, name="applicant-social-scrape"),
+    
+    path("api/account/setting", AccountSettingView.as_view(), name="account-setting"),
     
     path("", include(router.urls)),
 

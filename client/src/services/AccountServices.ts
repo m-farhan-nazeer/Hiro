@@ -49,3 +49,11 @@ export async function apiGetAccountFormData<T>() {
         method: 'get',
     })
 }
+
+export async function apiUpdateAccountSettingData<T, U extends Record<string, unknown>>(data: U) {
+    return ApiService.fetchData<T>({
+        url: '/account/setting',
+        method: 'patch',
+        data,
+    })
+}

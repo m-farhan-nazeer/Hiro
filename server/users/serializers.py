@@ -133,3 +133,55 @@ class LoginHistorySerializer(serializers.ModelSerializer):
             "time",
             "logout_time",
         ]
+
+
+class AccountSettingUpdateSerializer(serializers.Serializer):
+    """
+    Serializer to handle updates for both User and UserProfile.
+    Matches the structure expected by the frontend.
+    """
+    # User fields
+    name = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
+
+    # Profile fields
+    title = serializers.CharField(required=False, allow_blank=True)
+    telephone = serializers.CharField(required=False, allow_blank=True)
+    avatar = serializers.FileField(required=False, allow_null=True, allow_empty_file=True)
+    lang = serializers.CharField(required=False, allow_blank=True)
+    timeZone = serializers.CharField(required=False, allow_blank=True)
+    syncData = serializers.CharField(required=False, allow_blank=True)
+
+    def update(self, instance, validated_data):
+        user = instance
+        profile = getattr(user, "profile", None)
+
+        # Update User fields
+        if "name" in validated_data:
+            name_parts = validated_data["name"].split(" ", 1)
+            user.first_name = name_parts[0]
+            if len(name_parts) > 1:
+                user.last_name = name_parts[1]
+            else:
+                user.last_name = ""
+
+        if "email" in validated_data:
+            user.email = validated_data["email"]
+
+        user.save()
+
+        # Update Profile fields
+        if profile:
+            if "title" in validated_data:
+                profile.position = validated_data["title"]
+            if "telephone" in validated_data:
+                profile.telephone = validated_data["telephone"]
+            if "avatar" in validated_data:
+                profile.avatar = validated_data["avatar"]
+            if "lang" in validated_data:
+                profile.language = validated_data["lang"]
+            if "timeZone" in validated_data:
+                profile.timezone = validated_data["timeZone"]
+            profile.save()
+
+        return user

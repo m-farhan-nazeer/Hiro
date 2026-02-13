@@ -22,11 +22,6 @@ const dropdownItemList: DropdownList[] = [
         icon: <HiOutlineUser />,
     },
     {
-        label: 'Account Setting',
-        path: '/app/settings/profile',
-        icon: <HiOutlineCog />,
-    },
-    {
         label: 'Change Password',
         path: '/app/settings/password',
         icon: <RiLockPasswordLine />,
@@ -77,16 +72,14 @@ const _UserDropdown = ({ className }: CommonProps) => {
                         eventKey={item.label}
                         className="mb-1 px-0"
                     >
-                        <Link 
-                            className="flex h-full w-full px-2" 
+                        <Link
+                            className="flex items-center gap-2 h-full w-full px-3"
                             to={item.path}
                         >
-                            <span className="flex gap-2 items-center w-full">
-                                <span className="text-xl opacity-50">
-                                    {item.icon}
-                                </span>
-                                <span>{item.label}</span>
+                            <span className="text-xl opacity-50">
+                                {item.icon}
                             </span>
+                            <span>{item.label}</span>
                         </Link>
                     </Dropdown.Item>
                 ))}
