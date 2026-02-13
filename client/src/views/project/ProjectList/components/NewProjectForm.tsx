@@ -4,6 +4,8 @@ import Input from '@/components/ui/Input'
 import Button from '@/components/ui/Button'
 import Select from '@/components/ui/Select'
 import Avatar from '@/components/ui/Avatar'
+import Notification from '@/components/ui/Notification'
+import toast from '@/components/ui/toast'
 import hooks from '@/components/ui/hooks'
 import NewTaskField from './NewTaskField'
 import { Field, Form, Formik, FieldProps } from 'formik'
@@ -173,12 +175,19 @@ const NewProjectForm = ({ onJobUpdated, isEditMode = false, initialData }: NewPr
                 const appLink = `${window.location.origin}/apply?id=${createdJob.id}`
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     await navigator.clipboard.writeText(appLink)
-                    // eslint-disable-next-line no-alert
-                    alert('Job created. Application link copied to clipboard')
+                    toast.push(
+                        <Notification title="Job Created" type="success">
+                            Application link copied to clipboard
+                        </Notification>,
+                        { placement: 'top-center' }
+                    )
                 } else {
-                    // fallback prompt
-                    // eslint-disable-next-line no-alert
-                    prompt('Job created. Copy application link', appLink)
+                    toast.push(
+                        <Notification title="Job Created" type="success">
+                            Job ID: {createdJob.id}. Please copy the link manually: {appLink}
+                        </Notification>,
+                        { placement: 'top-center' }
+                    )
                 }
             } catch (err) {
                 // ignore clipboard errors but still continue
