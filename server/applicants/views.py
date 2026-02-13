@@ -207,29 +207,27 @@ def scrape_social_profile(request, applicant_id):
             'error': f'Daily limit reached ({count}/{daily_limit}). Try again tomorrow.'
         }, status=429)
 
-    logger.info(f"Starting LinkedIn scrape for applicant {applicant_id} at {profile.linkedin_url}")
+    logger.info(f"Triggering background LinkedIn scrape for applicant {applicant_id} at {profile.linkedin_url}")
+
+    # Update status to processing
+    profile.linkedin_scrape_status = 'processing'
+    profile.save(update_fields=['linkedin_scrape_status'])
 
     try:
-        scraper = LinkedInScraper()
-        insights = scraper.scrape_profile(profile.linkedin_url)
-        
-        # Log activity
-        success = bool(insights.get("headline") or insights.get("about"))
-        LinkedInScrapingActivity.log_scrape(
-            profile.linkedin_url,
-            success=success,
-            error=insights.get("error")
+        from .tasks import BackgroundTask, scrape_linkedin_async
+        BackgroundTask.run(
+            scrape_linkedin_async,
+            applicant_id=applicant.id,
+            linkedin_url=profile.linkedin_url
         )
         
-        # Save to DB
-        profile.social_insights = insights
-        profile.save()
-        
-        return Response(insights)
+        return Response({
+            'message': 'LinkedIn scraping started in background. Please wait a few moments for profiles to update.',
+            'status': 'processing'
+        }, status=http_status.HTTP_202_ACCEPTED)
         
     except Exception as e:
-        logger.error(f"Scraping failed: {e}")
-        LinkedInScrapingActivity.log_scrape(profile.linkedin_url, success=False, error=str(e))
+        logger.error(f"Failed to trigger background scraping: {e}")
         return Response({'error': str(e)}, status=500)
 
 

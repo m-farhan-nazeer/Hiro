@@ -50,6 +50,7 @@ interface ApplicantProfile {
     extraction_source: string
     github_url?: string | null
     linkedin_url?: string | null
+    linkedin_scrape_status?: 'idle' | 'processing' | 'completed' | 'failed'
     social_insights?: Record<string, any>
 }
 
@@ -120,18 +121,13 @@ const ApplicantProfileModal = ({
         setError(null)
 
         try {
-            const response = await ApiService.fetchData({
+            await ApiService.fetchData({
                 url: `/applicants/${applicantId}/social-scrape/`,
                 method: 'post'
             })
-            // Update profile with new social insights
-            const insights = response.data as Record<string, any>
-            setProfile((prev) => {
-                if (!prev) return null
-                return { ...prev, social_insights: insights }
-            })
+            // Fetch profile immediately to update status to processing
+            fetchProfile()
         } catch (err: any) {
-            // setError(err.response?.data?.error || 'Failed to fetch social data')
             console.error('Social fetch error:', err)
         } finally {
             setSocialLoading(false)
@@ -148,6 +144,21 @@ const ApplicantProfileModal = ({
             setError(null)
         }
     }, [isOpen, applicantId])
+
+    // Polling for social insights
+    useEffect(() => {
+        let interval: NodeJS.Timeout
+
+        if (isOpen && applicantId && profile?.linkedin_scrape_status === 'processing') {
+            interval = setInterval(() => {
+                fetchProfile()
+            }, 5000)
+        }
+
+        return () => {
+            if (interval) clearInterval(interval)
+        }
+    }, [isOpen, applicantId, profile?.linkedin_scrape_status])
 
     // Group skills by category
     const skillsByCategory = profile?.skills.reduce((acc, skill) => {
@@ -411,19 +422,33 @@ const ApplicantProfileModal = ({
                             </div>
                         ) : (
                             <div>
-                                {!profile.social_insights || Object.keys(profile.social_insights).length === 0 ? (
+                                {!profile.social_insights || Object.keys(profile.social_insights).length === 0 || profile.linkedin_scrape_status === 'processing' ? (
                                     <div className="text-center py-8">
-                                        <p className="text-gray-600 dark:text-gray-400 mb-4">
-                                            Fetch insights from LinkedIn profile to verify skills and experience.
-                                        </p>
-                                        <Button
-                                            variant="solid"
-                                            loading={socialLoading}
-                                            onClick={fetchSocialData}
-                                            icon={<FaLinkedin />}
-                                        >
-                                            Fetch Social Insights
-                                        </Button>
+                                        {profile.linkedin_scrape_status === 'processing' ? (
+                                            <div className="flex flex-col items-center">
+                                                <Spinner size={30} className="mb-4" />
+                                                <p className="text-blue-600 dark:text-blue-400 font-medium">
+                                                    LinkedIn scraping in progress...
+                                                </p>
+                                                <p className="text-sm text-gray-400 mt-1">
+                                                    This may take up to a minute. Data will appear automatically.
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                <p className="text-gray-600 dark:text-gray-400 mb-4">
+                                                    Fetch insights from LinkedIn profile to verify skills and experience.
+                                                </p>
+                                                <Button
+                                                    variant="solid"
+                                                    loading={socialLoading}
+                                                    onClick={fetchSocialData}
+                                                    icon={<FaLinkedin />}
+                                                >
+                                                    Fetch Social Insights
+                                                </Button>
+                                            </>
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="space-y-6">

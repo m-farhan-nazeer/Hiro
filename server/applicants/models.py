@@ -93,6 +93,18 @@ class ApplicantProfile(models.Model):
         help_text="LinkedIn profile URL"
     )
 
+    linkedin_scrape_status = models.CharField(
+        max_length=20,
+        default='idle',
+        choices=[
+            ('idle', 'Idle'),
+            ('processing', 'Processing'),
+            ('completed', 'Completed'),
+            ('failed', 'Failed')
+        ],
+        help_text="Current status of the LinkedIn background scrape"
+    )
+
     social_insights = models.JSONField(
         default=dict,
         blank=True,

@@ -107,98 +107,20 @@ class ApplicationCreateSerializer(serializers.Serializer):
                 f"Applicant: {applicant.email}, Job: {job.id}"
             )
 
-            # 2) Run MLOps pipeline to compute score
-            tmp_path = None
+            # 2) Trigger background processing (scoring and profile extraction)
             try:
-                # Import MLOps utils lazily so missing ML deps
-                # won't break Django startup; failures are logged.
-                try:
-                    from rag.utils import (
-                        store_job_description,
-                        rank_resume_against_job,
-                    )
-                except ImportError as e:
-                    logger.error(
-                        "MLOps dependencies not available, skipping scoring for "
-                        "application %s: %s",
-                        application.id,
-                        str(e),
-                        exc_info=True,
-                    )
-                    return application
-
-                # Build job description text for vector store
-                job_text_parts = [
-                    job.title or "",
-                    job.description or "",
-                    f"Status: {job.status}" if getattr(job, "status", None) else "",
-                    f"Job type: {job.jobtype}" if getattr(job, "jobtype", None) else "",
-                    f"Job time: {job.jobtime}" if getattr(job, "jobtime", None) else "",
-                    f"Shift: {job.shift}" if getattr(job, "shift", None) else "",
-                    f"Skills: {job.required_skills}" if getattr(job, "required_skills", None) else "",
-                    f"Domain: {job.domain}" if getattr(job, "domain", None) else "",
-                ]
-                job_text = "\n\n".join([p for p in job_text_parts if p])
-
-                if job_text:
-                    try:
-                        store_job_description(job_text)
-                    except Exception as e:
-                        logger.error(
-                            "Failed to store job description in vector DB for application %s: %s",
-                            application.id,
-                            str(e),
-                            exc_info=True,
-                        )
-
-                # Write resume bytes to a temporary file for ranking
-                with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_file:
-                    tmp_file.write(resume_bytes)
-                    tmp_path = tmp_file.name
-
-                try:
-                    generated_score = rank_resume_against_job(tmp_path)
-                except Exception as e:
-                    logger.error(
-                        "Failed to generate score for application %s: %s",
-                        application.id,
-                        str(e),
-                        exc_info=True,
-                    )
-                else:
-                    # Update application with generated score
-                    application.score = generated_score
-                    application.save(update_fields=["score"])
-                    logger.info(
-                        "Updated application %s with generated score: %s",
-                        application.id,
-                        generated_score,
-                    )
-            finally:
-                if tmp_path and os.path.exists(tmp_path):
-                    try:
-                        os.remove(tmp_path)
-                    except OSError:
-                        logger.warning("Failed to remove temp resume file %s", tmp_path)
-
-            # 3) Trigger background profile extraction
-            try:
-                from applicants.tasks import BackgroundTask, extract_profile_async
+                from applicants.tasks import BackgroundTask, process_application_all_in_one
                 
                 logger.info(
-                    f"Triggering background profile extraction for applicant {applicant.id}"
+                    f"Triggering background processing for application {application.id}"
                 )
                 BackgroundTask.run(
-                    extract_profile_async,
+                    process_application_all_in_one,
                     applicant_id=applicant.id,
                     application_id=application.id
                 )
             except Exception as e:
-                # Don't fail application creation if extraction fails
-                logger.error(
-                    f"Failed to trigger background extraction: {str(e)}",
-                    exc_info=True
-                )
+                logger.error(f"Failed to trigger background processing: {e}", exc_info=True)
 
             return application
 

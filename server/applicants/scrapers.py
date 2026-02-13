@@ -39,6 +39,7 @@ class LinkedInScraper:
                 "duration": None
             },
             "experiences": [],  # All work experiences
+            "education": [],  # Education history
             "connections": None,
             "followers": None,
             "recent_activity": [],
@@ -119,11 +120,53 @@ class LinkedInScraper:
                     )
                     return insights
                 
-                # Simulate human behavior
-                self._simulate_human(page)
-                
+                # Step 1: Progressive Scrolling (Crucial for lazy loading)
+                logger.info("Starting progressive scrolling...")
+                for i in range(5):
+                    page.evaluate("window.scrollBy(0, 800)")
+                    time.sleep(2)
+                    logger.info(f"Scrolled {i+1}/5 times")
+
+                # Step 2: Specifically wait for Experience, About, and Education to trigger
+                logger.info("Waiting for sections to load...")
+                sections_to_wait = [
+                    ('About', 'div[data-view-name="profile-card-about"]'),
+                    ('Experience', 'div[data-view-name="profile-card-experience"]'),
+                    ('Education', 'div[data-view-name="profile-card-education"]')
+                ]
+                for name, selector in sections_to_wait:
+                    try:
+                        page.wait_for_selector(selector, timeout=10000)
+                        logger.info(f"Found {name} section")
+                    except:
+                        logger.warning(f"{name} section container not found within 10s")
+
+                # Step 3: Click "See more" buttons if they exist
+                try:
+                    expand_buttons = page.query_selector_all('button[data-testid="expandable-text-button"]')
+                    for btn in expand_buttons:
+                        try:
+                            if btn.is_visible():
+                                btn.click()
+                                time.sleep(0.5)
+                        except:
+                            continue
+                except:
+                    pass
+
                 # Extract data
                 insights = self._extract_profile_data(page, insights)
+
+                # Save FINAL screenshot and HTML for debugging (after scrolling/waiting)
+                try:
+                    debug_dir = SESSION_DIR.parent / 'debug'
+                    debug_dir.mkdir(exist_ok=True)
+                    page.screenshot(path=str(debug_dir / 'linkedin_final.png'))
+                    with open(debug_dir / 'linkedin_final.html', 'w', encoding='utf-8') as f:
+                        f.write(page.content())
+                    logger.info("Saved final debug files to server/debug/linkedin_final.*")
+                except Exception as e:
+                    logger.debug(f"Final debug save failed: {e}")
                 
                 # Success logging
                 if insights["headline"] or insights["about"]:
@@ -421,79 +464,110 @@ class LinkedInScraper:
                         insights["connections"] = match.group(1)
             except Exception as e:
                 logger.warning(f"Connections extraction failed: {e}")
-            
+
             # === Work Experience (All Jobs) ===
             try:
-                # Scroll to Experience section
-                try:
-                    page.evaluate('document.querySelector("#experience")?.scrollIntoView()')
-                    time.sleep(1)
-                except:
-                    pass
+                logger.info("Attempting to extract experiences...")
+                # 1. Broadest possible selector: any LI within the experience section
+                exp_containers = page.query_selector_all('div[data-view-name="profile-card-experience"] li')
                 
-                # New robust selectors for experience items
-                exp_selectors = [
-                    'div[componentkey*="entity-collection-item"]', # Observed in debug HTML
-                    'div[data-view-name="profile-component-entity"]',
-                    'li.artdeco-list__item',
-                ]
-                
-                found_experiences = False
-                for selector in exp_selectors:
-                    elements = page.query_selector_all(selector)
-                    # Filter for items that likely contain experience (check for yr/mo or present)
-                    valid_elements = []
-                    for el in elements:
-                        txt = el.inner_text().lower()
-                        if any(x in txt for x in ['yr', 'mo', 'present', '20', '19']):
-                            valid_elements.append(el)
-                    
-                    if not valid_elements:
-                        continue
+                if not exp_containers:
+                     logger.info("No LI found in experience, trying DIVs with date patterns...")
+                     # Use a script to find likely item containers if LI fails
+                     exp_containers = page.query_selector_all('div[data-view-name="profile-card-experience"] > div > div > div > div')
+
+                logger.info(f"Found {len(exp_containers)} potential experience elements")
+
+                for idx, exp_element in enumerate(exp_containers[:10]):
+                    try:
+                        # Extract text lines (split by newline and filter)
+                        content = exp_element.inner_text()
+                        lines = [l.strip() for l in content.split('\n') if l.strip()]
                         
-                    for idx, exp_element in enumerate(valid_elements[:10]):
-                        try:
-                            # Use all p tags within the element as lines
-                            lines = [p.inner_text().strip() for p in exp_element.query_selector_all('p') if p.inner_text().strip()]
-                            if not lines:
-                                # Fallback to split lines
-                                lines = [l.strip() for l in exp_element.inner_text().split('\n') if l.strip()]
+                        if len(lines) >= 2:
+                            experience = {
+                                "title": lines[0],
+                                "company": lines[1],
+                                "duration": None,
+                                "location": None
+                            }
                             
-                            if len(lines) >= 1:
-                                experience = {
-                                    "title": lines[0],
-                                    "company": lines[1] if len(lines) > 1 else None,
-                                    "duration": None,
-                                    "location": None
-                                }
-                                
-                                # Search for duration line
-                                for line in lines[1:]:
-                                    if any(x in line.lower() for x in ['yr', 'mo', 'year', 'month', '·', 'present']):
+                            # Search for duration/date pattern
+                            for line in lines[1:]:
+                                if any(x in line.lower() for x in ['yr', 'mo', 'year', 'month', '·', 'present', '201', '202']):
+                                    # Avoid lines that are just numbers or unrelated
+                                    if not any(x in line.lower() for x in ['skills', 'endorse']):
                                         experience["duration"] = line
                                         break
-                                
-                                # If company is missing or looks like duration, shift
-                                if experience["company"] and any(x in experience["company"].lower() for x in ['yr', 'mo', '·']):
-                                     experience["company"] = None # Will try to fix if more lines exist
-                                
-                                insights["experiences"].append(experience)
-                                
-                                # First one is current position
-                                if idx == 0 and not insights["current_position"]["title"]:
-                                    insights["current_position"]["title"] = experience["title"]
-                                    insights["current_position"]["company"] = experience["company"]
-                                    insights["current_position"]["duration"] = experience["duration"]
-                                    logger.info(f"Found current position: {experience['title']}")
-                        except:
-                            continue
-                    
-                    if insights["experiences"]:
-                        logger.info(f"Extracted {len(insights['experiences'])} experiences via {selector}")
-                        found_experiences = True
-                        break
+                            
+                            insights["experiences"].append(experience)
+                            
+                            # First one is current position
+                            if idx == 0:
+                                insights["current_position"]["title"] = experience["title"]
+                                insights["current_position"]["company"] = experience["company"]
+                                insights["current_position"]["duration"] = experience["duration"]
+                                logger.info(f"Found current position: {experience['title']}")
+                    except Exception as e:
+                        logger.debug(f"Failed to parse experience item: {e}")
+                
+                if insights["experiences"]:
+                     logger.info(f"Extracted {len(insights['experiences'])} experiences")
             except Exception as e:
                 logger.warning(f"Experience extraction failed: {e}")
+
+            # === Education ===
+            try:
+                logger.info("Attempting to extract education...")
+                # Try LI first, then find the container that holds the education items
+                edu_containers = page.query_selector_all('div[data-view-name="profile-card-education"] li')
+                
+                if not edu_containers:
+                     logger.info("No LI found in education, trying broader DIV search...")
+                     # Find divs that contain year patterns
+                     all_divs = page.query_selector_all('div[data-view-name="profile-card-education"] div')
+                     for d in all_divs:
+                         try:
+                             text = d.inner_text()
+                             # Look for a year like 2022 or 2026
+                             if re.search(r'20\d{2}', text) and 10 < len(text) < 500:
+                                 # Avoid duplicates by checking if we already have this text
+                                 if not any(text in item.inner_text() for item in edu_containers):
+                                     edu_containers.append(d)
+                         except:
+                             continue
+
+                logger.info(f"Found {len(edu_containers)} potential education elements")
+                
+                for edu_element in edu_containers[:5]:
+                    try:
+                        content = edu_element.inner_text()
+                        lines = [l.strip() for l in content.split('\n') if l.strip()]
+                        if len(lines) >= 1:
+                            # Skip the "Education" header or empty entries
+                            if lines[0].lower() == 'education' and len(lines) > 1:
+                                lines = lines[1:]
+                            
+                            edu = {
+                                "school": lines[0],
+                                "degree": lines[1] if len(lines) > 1 else None,
+                                "duration": None
+                            }
+                            # Look for duration
+                            for line in lines[1:]:
+                                if re.search(r'20\d{2}', line) or '·' in line:
+                                    edu["duration"] = line
+                                    break
+                            
+                            # Deduplicate by school name
+                            if not any(e['school'] == edu['school'] for e in insights["education"]):
+                                insights["education"].append(edu)
+                    except:
+                        continue
+                if insights["education"]:
+                    logger.info(f"Extracted {len(insights['education'])} education items")
+            except Exception as e:
+                logger.warning(f"Education extraction failed: {e}")
             
             # === About Section ===
             try:
