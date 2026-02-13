@@ -62,7 +62,13 @@ def process_application_all_in_one(applicant_id: int, application_id: int) -> No
 
         if not application.resume:
             logger.warning(f"No resume found for application {application_id}")
+            application.scoring_status = "failed"
+            application.save(update_fields=["scoring_status"])
             return
+
+        # Start processing
+        application.scoring_status = "processing"
+        application.save(update_fields=["scoring_status"])
 
         # 2. Scoring (moved from serializer)
         # Build job description text for vector store
@@ -98,7 +104,8 @@ def process_application_all_in_one(applicant_id: int, application_id: int) -> No
 
             generated_score = rank_resume_against_job(tmp_path, custom_weights=weights)
             application.score = generated_score
-            application.save(update_fields=["score"])
+            application.scoring_status = "completed"
+            application.save(update_fields=["score", "scoring_status"])
             logger.info(f"Updated application {application_id} with score: {generated_score}")
         finally:
             if tmp_path and os.path.exists(tmp_path):
@@ -134,6 +141,12 @@ def process_application_all_in_one(applicant_id: int, application_id: int) -> No
         logger.error(f"Application {application_id} not found")
     except Exception as e:
         logger.error(f"Consolidated processing failed for application {application_id}: {str(e)}", exc_info=True)
+        try:
+            application = Application.objects.get(id=application_id)
+            application.scoring_status = "failed"
+            application.save(update_fields=["scoring_status"])
+        except:
+            pass
 
 
 def scrape_linkedin_async(applicant_id: int, linkedin_url: str) -> None:

@@ -57,6 +57,7 @@ class ApplicationCreateSerializer(serializers.Serializer):
         resume_file = validated_data["resume_file"]
         score = validated_data.get("score", 0)
         status = validated_data.get("status", "pending")
+        scoring_status = validated_data.get("scoring_status", "pending")
 
         try:
             # Get or create applicant by email
@@ -100,6 +101,7 @@ class ApplicationCreateSerializer(serializers.Serializer):
                 resume=resume_bytes,
                 score=score,
                 status=status,
+                scoring_status=scoring_status,
             )
 
             logger.info(
@@ -167,6 +169,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             'resume',
             'resume_file',
             'score',
+            'scoring_status',
             'status',
             'date',
         ]
