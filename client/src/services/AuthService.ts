@@ -9,7 +9,7 @@ import type {
 } from '@/@types/auth'
 
 // Django backend base URL (dev)
-const AUTH_BASE_URL = 'http://127.0.0.1:8000'
+const AUTH_BASE_URL = 'http://localhost:8000'
 
 const authClient = axios.create({
     baseURL: AUTH_BASE_URL,

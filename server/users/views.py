@@ -5,11 +5,11 @@ from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
 from rest_framework import status, permissions, authentication
-from rest_framework.authentication import SessionAuthentication
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import UserProfile, LoginHistory
+from .authentication import CsrfExemptSessionAuthentication
 from .serializers import (
     UserSerializer,
     UserRegisterSerializer,
@@ -17,15 +17,6 @@ from .serializers import (
     ChangePasswordSerializer,
     LoginHistorySerializer,
 )
-
-
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    """
-    Session authentication that does NOT enforce CSRF.
-    Only for API use (Postman / SPA). Don't use this blindly in prod.
-    """
-    def enforce_csrf(self, request):
-        return  # skip CSRF check
 
 
 @method_decorator(csrf_exempt, name="dispatch")

@@ -1,4 +1,4 @@
-const BASE_URL = 'http://127.0.0.1:8000/api/applications/';
+const BASE_URL = 'http://localhost:8000/api/applications/';
 
 // export async function createApplication(formData: FormData) {
 //     const res = await fetch(BASE_URL, {
@@ -29,7 +29,7 @@ export async function listApplications(jobId?: string | number, status?: string)
 		params.append('status', status);
 	}
 	const url = params.toString() ? `${BASE_URL}?${params.toString()}` : BASE_URL;
-	const res = await fetch(url);
+	const res = await fetch(url, { credentials: 'include' });
 	if (!res.ok) throw new Error('Failed to fetch applications');
 	return res.json();
 }
@@ -58,6 +58,7 @@ export async function createApplication(applicationData: {
 
 	const res = await fetch(BASE_URL, {
 		method: 'POST',
+		credentials: 'include',
 		body: formData,
 	});
 	
@@ -70,7 +71,7 @@ export async function createApplication(applicationData: {
 }
 
 export async function getApplication(id: string | number) {
-	const res = await fetch(`${BASE_URL}${id}/`);
+	const res = await fetch(`${BASE_URL}${id}/`, { credentials: 'include' });
 	if (!res.ok) throw new Error('Failed to fetch application');
 	return res.json();
 }
@@ -106,6 +107,7 @@ export async function updateApplication(id: string | number, applicationData: {
 	
 	const res = await fetch(`${BASE_URL}${id}/`, {
 		method: method,
+		credentials: 'include',
 		body: formData,
 	});
 	if (!res.ok) {
@@ -118,8 +120,8 @@ export async function updateApplication(id: string | number, applicationData: {
 export async function deleteApplication(id: string | number) {
 	const res = await fetch(`${BASE_URL}${id}/`, {
 		method: 'DELETE',
+		credentials: 'include',
 	});
 	if (!res.ok) throw new Error('Failed to delete application');
 	return true;
 }
-

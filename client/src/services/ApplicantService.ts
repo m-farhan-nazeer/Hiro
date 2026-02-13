@@ -1,14 +1,14 @@
-const BASE_URL = 'http://127.0.0.1:8000/applicants/';
+const BASE_URL = 'http://localhost:8000/applicants/';
 
 export async function listApplicants(jobId?: string | number) {
 	const url = jobId ? `${BASE_URL}?job=${jobId}` : BASE_URL;
-	const res = await fetch(url);
+	const res = await fetch(url, { credentials: 'include' });
 	if (!res.ok) throw new Error('Failed to fetch applicants');
 	return res.json();
 }
 
 export async function getApplicant(id: string | number) {
-	const res = await fetch(`${BASE_URL}${id}/`);
+	const res = await fetch(`${BASE_URL}${id}/`, { credentials: 'include' });
 	if (!res.ok) throw new Error('Failed to fetch applicant');
 	return res.json();
 }
@@ -43,6 +43,7 @@ export async function createApplicant(applicantData: {
 
 	const res = await fetch(BASE_URL, {
 		method: 'POST',
+		credentials: 'include',
 		body: formData,
 	});
 	
@@ -88,6 +89,7 @@ export async function updateApplicant(id: string | number, applicantData: {
 
 	const res = await fetch(`${BASE_URL}${id}/`, {
 		method: 'PUT',
+		credentials: 'include',
 		body: formData,
 	});
 	if (!res.ok) throw new Error('Failed to update applicant');
@@ -97,8 +99,8 @@ export async function updateApplicant(id: string | number, applicantData: {
 export async function deleteApplicant(id: string | number) {
 	const res = await fetch(`${BASE_URL}${id}/`, {
 		method: 'DELETE',
+		credentials: 'include',
 	});
 	if (!res.ok) throw new Error('Failed to delete applicant');
 	return true;
 }
-

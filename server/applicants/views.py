@@ -1,11 +1,13 @@
-from rest_framework import viewsets, status as http_status
-from rest_framework.decorators import api_view
+from rest_framework import viewsets, status as http_status, permissions
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from django.http import HttpResponse
 from .models import Applicant, ApplicantProfile
 from .serializers import ApplicantSerializer, ApplicantProfileSerializer
 from applications.models import Application
+from posts.models import Job
+from users.authentication import CsrfExemptSessionAuthentication
 import logging
 import asyncio
 from asgiref.sync import async_to_sync
@@ -25,6 +27,8 @@ class ApplicantViewSet(viewsets.ModelViewSet):
     - PATCH /applicants/<id>/   -> partial update
     - DELETE /applicants/<id>/  -> delete
     """
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+    permission_classes = [permissions.IsAuthenticated]
     queryset = Applicant.objects.all().order_by("-id")
     serializer_class = ApplicantSerializer
     
@@ -34,6 +38,12 @@ class ApplicantViewSet(viewsets.ModelViewSet):
         Returns applicants who have applications for the specified job.
         """
         queryset = super().get_queryset()
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return Applicant.objects.none()
+
+        visible_jobs = Job.objects.visible_to(user)
+        queryset = queryset.filter(applications__job__in=visible_jobs).distinct()
         job_id = self.request.query_params.get('job', None)
         
         # Prefetch related applications for better performance
@@ -42,6 +52,8 @@ class ApplicantViewSet(viewsets.ModelViewSet):
         if job_id is not None:
             try:
                 job_id = int(job_id)
+                if not visible_jobs.filter(id=job_id).exists():
+                    return Applicant.objects.none()
                 # Filter applicants who have applications for this job
                 application_ids = Application.objects.filter(job_id=job_id).values_list('applicant_id', flat=True)
                 queryset = queryset.filter(id__in=application_ids)
@@ -52,6 +64,13 @@ class ApplicantViewSet(viewsets.ModelViewSet):
         return queryset
 
 
+def _user_can_access_applicant(user, applicant: Applicant) -> bool:
+    if not user or not user.is_authenticated:
+        return False
+    visible_jobs = Job.objects.visible_to(user)
+    return Application.objects.filter(applicant=applicant, job__in=visible_jobs).exists()
+
+
 def applicant_resume(request, pk):
     """
     Return the resume stored as BLOB for this applicant.
@@ -59,6 +78,9 @@ def applicant_resume(request, pk):
     Note: Applicants don't have resumes directly - resumes are stored in Applications.
     """
     applicant = get_object_or_404(Applicant, pk=pk)
+
+    if not _user_can_access_applicant(request.user, applicant):
+        return HttpResponse(status=404)
     
     # Get the most recent application's resume for this applicant
     application = Application.objects.filter(applicant=applicant).order_by('-date').first()
@@ -80,6 +102,8 @@ def applicant_resume(request, pk):
 # ============================================
 
 @api_view(['GET'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([permissions.IsAuthenticated])
 def get_applicant_profile(request, applicant_id):
     """
     GET /api/applicants/<id>/profile/
@@ -99,6 +123,9 @@ def get_applicant_profile(request, applicant_id):
             {'error': 'Applicant not found'},
             status=http_status.HTTP_404_NOT_FOUND
         )
+
+    if not _user_can_access_applicant(request.user, applicant):
+        return Response({'error': 'Applicant not found'}, status=http_status.HTTP_404_NOT_FOUND)
     
     # Check if profile exists
     try:
@@ -112,6 +139,8 @@ def get_applicant_profile(request, applicant_id):
 
 
 @api_view(['POST'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([permissions.IsAuthenticated])
 def refresh_applicant_profile(request, applicant_id):
     """
     POST /api/applicants/<id>/profile/refresh/
@@ -131,6 +160,9 @@ def refresh_applicant_profile(request, applicant_id):
             {'error': 'Applicant not found'},
             status=http_status.HTTP_404_NOT_FOUND
         )
+
+    if not _user_can_access_applicant(request.user, applicant):
+        return Response({'error': 'Applicant not found'}, status=http_status.HTTP_404_NOT_FOUND)
     
     # Delete existing profile if exists
     ApplicantProfile.objects.filter(applicant=applicant).delete()
@@ -141,6 +173,8 @@ def refresh_applicant_profile(request, applicant_id):
 
 
 @api_view(['POST'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([permissions.IsAuthenticated])
 def scrape_social_profile(request, applicant_id):
     """
     POST /api/applicants/<id>/social-scrape/
@@ -151,6 +185,9 @@ def scrape_social_profile(request, applicant_id):
     try:
         applicant = Applicant.objects.get(pk=applicant_id)
     except Applicant.DoesNotExist:
+        return Response({'error': 'Applicant not found'}, status=404)
+
+    if not _user_can_access_applicant(request.user, applicant):
         return Response({'error': 'Applicant not found'}, status=404)
 
     try:
@@ -170,29 +207,27 @@ def scrape_social_profile(request, applicant_id):
             'error': f'Daily limit reached ({count}/{daily_limit}). Try again tomorrow.'
         }, status=429)
 
-    logger.info(f"Starting LinkedIn scrape for applicant {applicant_id} at {profile.linkedin_url}")
+    logger.info(f"Triggering background LinkedIn scrape for applicant {applicant_id} at {profile.linkedin_url}")
+
+    # Update status to processing
+    profile.linkedin_scrape_status = 'processing'
+    profile.save(update_fields=['linkedin_scrape_status'])
 
     try:
-        scraper = LinkedInScraper()
-        insights = scraper.scrape_profile(profile.linkedin_url)
-        
-        # Log activity
-        success = bool(insights.get("headline") or insights.get("about"))
-        LinkedInScrapingActivity.log_scrape(
-            profile.linkedin_url,
-            success=success,
-            error=insights.get("error")
+        from .tasks import BackgroundTask, scrape_linkedin_async
+        BackgroundTask.run(
+            scrape_linkedin_async,
+            applicant_id=applicant.id,
+            linkedin_url=profile.linkedin_url
         )
         
-        # Save to DB
-        profile.social_insights = insights
-        profile.save()
-        
-        return Response(insights)
+        return Response({
+            'message': 'LinkedIn scraping started in background. Please wait a few moments for profiles to update.',
+            'status': 'processing'
+        }, status=http_status.HTTP_202_ACCEPTED)
         
     except Exception as e:
-        logger.error(f"Scraping failed: {e}")
-        LinkedInScrapingActivity.log_scrape(profile.linkedin_url, success=False, error=str(e))
+        logger.error(f"Failed to trigger background scraping: {e}")
         return Response({'error': str(e)}, status=500)
 
 

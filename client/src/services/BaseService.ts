@@ -5,7 +5,7 @@ import deepParseJson from '@/utils/deepParseJson'
 import store, { signOutSuccess } from '../store'
 
 // Django backend base URL (dev)
-const BACKEND_BASE_URL = 'http://127.0.0.1:8000'
+const BACKEND_BASE_URL = 'http://localhost:8000'
 
 const BaseService = axios.create({
     timeout: 60000,

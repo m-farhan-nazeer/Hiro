@@ -1,7 +1,7 @@
-const BASE_URL = 'http://127.0.0.1:8000/api/jobs/';
+const BASE_URL = 'http://localhost:8000/api/jobs/';
 
 export async function listJobs() {
-	const res = await fetch(BASE_URL);
+	const res = await fetch(BASE_URL, { credentials: 'include' });
 	if (!res.ok) throw new Error('Failed to fetch jobs');
 	return res.json();
 }
@@ -18,6 +18,7 @@ export async function createJob(jobData: {
 	const res = await fetch(BASE_URL, {
 		method: 'POST',
 		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include',
 		body: JSON.stringify(jobData),
 	});
 	if (!res.ok) throw new Error('Failed to create job');
@@ -25,7 +26,7 @@ export async function createJob(jobData: {
 }
 
 export async function getJob(id: string | number) {
-	const res = await fetch(`${BASE_URL}${id}/`);
+	const res = await fetch(`${BASE_URL}${id}/`, { credentials: 'include' });
 	if (!res.ok) throw new Error('Failed to fetch job');
 	return res.json();
 }
@@ -42,6 +43,7 @@ export async function updateJob(id: string | number, jobData: {
 	const res = await fetch(`${BASE_URL}${id}/`, {
 		method: 'PUT',
 		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include',
 		body: JSON.stringify(jobData),
 	});
 	if (!res.ok) throw new Error('Failed to update job');
@@ -60,6 +62,7 @@ export async function patchJob(id: string | number, patchData: Partial<{
 	const res = await fetch(`${BASE_URL}${id}/`, {
 		method: 'PATCH',
 		headers: { 'Content-Type': 'application/json' },
+		credentials: 'include',
 		body: JSON.stringify(patchData),
 	});
 	if (!res.ok) throw new Error('Failed to patch job');
@@ -69,6 +72,7 @@ export async function patchJob(id: string | number, patchData: Partial<{
 export async function deleteJob(id: string | number) {
 	const res = await fetch(`${BASE_URL}${id}/`, {
 		method: 'DELETE',
+		credentials: 'include',
 	});
 	if (!res.ok) throw new Error('Failed to delete job');
 	return true;

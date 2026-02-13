@@ -130,6 +130,29 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
         fetchData()
     }, [fetchData])
 
+    useEffect(() => {
+        // Listen for updates from other tabs
+        const channel = new BroadcastChannel('hiro-updates')
+        channel.onmessage = (event) => {
+            if (event.data.type === 'REFETCH_APPLICATIONS') {
+                console.log('Received refetch signal from broadcast channel')
+                fetchData()
+            }
+        }
+
+        // Refetch when window regains focus to ensure data is fresh
+        const handleFocus = () => {
+            console.log('Window focused, refetching applications')
+            fetchData()
+        }
+        window.addEventListener('focus', handleFocus)
+
+        return () => {
+            channel.close()
+            window.removeEventListener('focus', handleFocus)
+        }
+    }, [fetchData])
+
     const tableData = useMemo(
         () => ({ pageIndex, pageSize, sort, query, total }),
         [pageIndex, pageSize, sort, query, total]
