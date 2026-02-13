@@ -6,6 +6,7 @@ export type SignInCredential = {
 // Backend (Django) auth types
 export type BackendUserProfile = {
     role?: string
+    name: string
     telephone: string
     avatar: string | null
     department: string

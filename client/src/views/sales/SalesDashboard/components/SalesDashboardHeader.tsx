@@ -7,15 +7,17 @@ import {
     useAppSelector,
 } from '../store'
 import { useAppDispatch } from '@/store'
-import { HiOutlineFilter } from 'react-icons/hi'
+import { HiOutlineFilter, HiOutlineBriefcase, HiOutlineUser } from 'react-icons/hi'
 import dayjs from 'dayjs'
+import Avatar from '@/components/ui/Avatar'
 
 const dateFormat = 'MMM DD, YYYY'
-
 const { DatePickerRange } = DatePicker
 
 const SalesDashboardHeader = () => {
     const dispatch = useAppDispatch()
+
+    const { userName, displayName, avatar, title } = useAppSelector((state) => state.auth.user)
 
     const startDate = useAppSelector(
         (state) => state.salesDashboard.data.startDate
@@ -32,26 +34,24 @@ const SalesDashboardHeader = () => {
     }
 
     return (
-        <div className="lg:flex items-center justify-between mb-4 gap-3">
-            <div className="mb-4 lg:mb-0">
-                <h3>Dashboard</h3>
-                <p>Welcome Back, Here's what's happening with your recruitment.</p>
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4">
+            <div className="flex items-center gap-4">
+                <Avatar
+                    size={65}
+                    shape="circle"
+                    src={avatar}
+                    icon={<HiOutlineUser />}
+                    className="border-2 border-white dark:border-gray-800 shadow-md"
+                />
+                <div>
+                    <h3 className="font-bold">Welcome back, {displayName || userName}!</h3>
+                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                        <HiOutlineBriefcase className="text-lg" />
+                        <span className="font-medium">{title || 'Member'}</span>
+                    </div>
+                </div>
             </div>
-            <div className="flex flex-col lg:flex-row lg:items-center gap-3">
-                {/* <DatePickerRange
-                    value={[
-                        dayjs.unix(startDate).toDate(),
-                        dayjs.unix(endDate).toDate(),
-                    ]}
-                    inputFormat={dateFormat}
-                    size="sm"
-                    onChange={handleDateChange}
-                    disabled   //DISABLED FOR TESTING
-                /> */}
-                {/* <Button size="sm" icon={<HiOutlineFilter />} onClick={onFilter}>
-                    Filter
-                </Button> */}
-            </div>
+
         </div>
     )
 }

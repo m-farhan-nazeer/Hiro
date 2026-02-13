@@ -29,7 +29,7 @@ const dropdownItemList: DropdownList[] = [
 ]
 
 const _UserDropdown = ({ className }: CommonProps) => {
-    const { avatar, userName, authority, email } = useAppSelector(
+    const { avatar, userName, displayName, authority, email } = useAppSelector(
         (state) => state.auth.user
     )
 
@@ -59,7 +59,7 @@ const _UserDropdown = ({ className }: CommonProps) => {
                         <Avatar shape="circle" src={avatar} />
                         <div>
                             <div className="font-bold text-gray-900 dark:text-gray-100">
-                                {userName}
+                                {displayName}
                             </div>
                             <div className="text-xs">{email}</div>
                         </div>

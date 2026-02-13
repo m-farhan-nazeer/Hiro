@@ -51,8 +51,8 @@ const { Control } = components
 const validationSchema = Yup.object().shape({
     name: Yup.string()
         .min(3, 'Too Short!')
-        .max(12, 'Too Long!')
-        .required('User Name Required'),
+        .max(50, 'Too Long!')
+        .required('Display Name Required'),
     email: Yup.string().email('Invalid email').required('Email Required'),
     title: Yup.string(),
     avatar: Yup.string(),
@@ -122,7 +122,7 @@ const Profile = ({
     },
 }: ProfileProps) => {
     const dispatch = useAppDispatch()
-    const { authority } = useAppSelector((state) => state.auth.user)
+    const { authority, userName: currentUserName, email: currentEmail } = useAppSelector((state) => state.auth.user)
 
     const onSetFormFile = (
         form: FormikProps<ProfileFormModel>,
@@ -155,9 +155,11 @@ const Profile = ({
                 const { profile } = response.data
                 dispatch(setUser({
                     avatar: profile.avatar,
-                    userName: profile.name,
-                    email: profile.email,
-                    authority: authority
+                    userName: currentUserName, // Preserve original login username
+                    displayName: profile.name, // Use the updated display name
+                    email: profile.email || currentEmail,
+                    authority: authority,
+                    title: profile.position
                 }))
             }
             toast.push(<Notification title={'Profile updated'} type="success" />, {
@@ -196,14 +198,14 @@ const Profile = ({
                             />
                             <FormRow
                                 name="name"
-                                label="Name"
+                                label="Display Name"
                                 {...validatorProps}
                             >
                                 <Field
                                     type="text"
                                     autoComplete="off"
                                     name="name"
-                                    placeholder="Name"
+                                    placeholder="Display Name"
                                     component={Input}
                                     prefix={
                                         <HiOutlineUserCircle className="text-xl" />

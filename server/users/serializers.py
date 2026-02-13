@@ -6,10 +6,13 @@ from .models import UserProfile, LoginHistory
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
+    name = serializers.SerializerMethodField()
+
     class Meta:
         model = UserProfile
         fields = [
             "role",
+            "name",
             "telephone",
             "avatar",
             "department",
@@ -19,6 +22,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "password_last_changed",
         ]
         read_only_fields = ["password_last_changed", "role"]
+
+    def get_name(self, obj):
+        user = obj.user
+        return f"{user.first_name} {user.last_name}".strip() or user.username
 
 
 class UserSerializer(serializers.ModelSerializer):
