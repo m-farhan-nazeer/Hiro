@@ -12,6 +12,7 @@ from .models import Application
 from .serializers import ApplicationSerializer, ApplicationCreateSerializer
 from applicants.models import Applicant
 from posts.models import Job
+from django.db.models.functions import TruncMonth
 from users.authentication import CsrfExemptSessionAuthentication
 
 logger = logging.getLogger(__name__)
@@ -312,16 +313,42 @@ class SalesDashboardAPIView(APIView):
             'totalapplicants': job.total_applicants
         } for job in latest_jobs]
         
-        # Sales report data (applications over last 6 months by month)
+        # Recruitment report data (applications over last 6 months by calendar month)
+        six_months_ago_date = (timezone.now() - timedelta(days=180)).replace(day=1).date()
+        
+        monthly_counts = (
+            application_qs.filter(date__gte=six_months_ago_date)
+            .annotate(month=TruncMonth('date'))
+            .values('month')
+            .annotate(count=Count('id'))
+            .order_by('month')
+        )
+        
+        # Convert QuerySet to a dict for easy lookup
+        counts_dict = {item['month']: item['count'] for item in monthly_counts}
+        
+        # Ensure we have data for the last 6 months, even if missing in DB
         months = []
         application_counts = []
-        for i in range(6):
-            month_start = (timezone.now() - timedelta(days=30 * (6 - i))).date()
-            month_end = month_start + timedelta(days=30)
-            month_name = month_start.strftime('%b')
-            months.append(month_name)
-            count = application_qs.filter(date__gte=month_start, date__lt=month_end).count()
-            application_counts.append(count)
+        
+        # Start from 5 months ago to include current month (total 6)
+        current_date = timezone.now().date().replace(day=1)
+        for i in range(5, -1, -1):
+            target_month = (current_date - timedelta(days=i*31)).replace(day=1) 
+            # Note: timedelta(days=i*31) is a bit loose, 
+            # better to use a loop or relativedelta if available, 
+            # but Hiro seems to use standard datetime.
+            
+            # Refined month calculation without external dependencies
+            year = current_date.year
+            month = current_date.month - i
+            while month <= 0:
+                month += 12
+                year -= 1
+            
+            month_date = timezone.datetime(year, month, 1).date()
+            months.append(month_date.strftime('%b'))
+            application_counts.append(counts_dict.get(month_date, 0))
         
         # Recruitment by categories (by application status: hired, shortlisted, pending, rejected)
         status_counts = application_qs.values('status').annotate(
