@@ -47,8 +47,10 @@ function useAuth() {
                             setUser({
                                 avatar: resp.data.profile?.avatar || '',
                                 userName: resp.data.username || 'Anonymous',
+                                displayName: resp.data.profile?.name || resp.data.username || 'Anonymous',
                                 authority: resolveAuthority(resp.data.profile?.role),
                                 email: resp.data.email || '',
+                                title: resp.data.profile?.position || '',
                             })
                         )
                     }
@@ -84,7 +86,7 @@ function useAuth() {
         // }
         try {
             const resp = await apiSignIn(values)
-            
+
             if (!resp.data) {
                 return {
                     status: 'failed',
@@ -97,8 +99,10 @@ function useAuth() {
                 setUser({
                     avatar: resp.data.profile?.avatar || '',
                     userName: resp.data.username || 'Anonymous',
+                    displayName: resp.data.profile?.name || resp.data.username || 'Anonymous',
                     authority: resolveAuthority(resp.data.profile?.role),
                     email: resp.data.email || '',
+                    title: resp.data.profile?.position || '',
                 })
             )
             const redirectUrl = query.get(REDIRECT_URL_KEY)
@@ -146,7 +150,7 @@ function useAuth() {
             console.log('[useAuth] Starting registration...', values.userName)
             const resp = await apiSignUp(values)
             console.log('[useAuth] Registration response:', resp.status, resp.data)
-            
+
             if (!resp.data) {
                 console.error('[useAuth] No user data in registration response')
                 return {
@@ -172,8 +176,10 @@ function useAuth() {
                         setUser({
                             avatar: loginResp.data.profile?.avatar || '',
                             userName: loginResp.data.username || 'Anonymous',
+                            displayName: loginResp.data.profile?.name || loginResp.data.username || 'Anonymous',
                             authority: resolveAuthority(loginResp.data.profile?.role),
                             email: loginResp.data.email || '',
+                            title: loginResp.data.profile?.position || '',
                         })
                     )
                     const redirectUrl = query.get(REDIRECT_URL_KEY)
@@ -198,13 +204,13 @@ function useAuth() {
                 // Registration succeeded but auto-login failed
                 const loginErrorData = loginError?.response?.data
                 let loginErrorMessage = 'Account created but automatic login failed. Please sign in manually.'
-                
+
                 if (loginErrorData?.detail) {
                     loginErrorMessage = `Account created. ${loginErrorData.detail} Please sign in manually.`
                 } else if (loginErrorData) {
                     loginErrorMessage = `Account created. Login error: ${JSON.stringify(loginErrorData)}. Please sign in manually.`
                 }
-                
+
                 return {
                     status: 'failed',
                     message: loginErrorMessage,
@@ -244,8 +250,10 @@ function useAuth() {
             setUser({
                 avatar: '',
                 userName: '',
+                displayName: '',
                 email: '',
                 authority: [],
+                title: '',
             })
         )
         navigate(appConfig.unAuthenticatedEntryPath)

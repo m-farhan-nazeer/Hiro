@@ -7,6 +7,9 @@ import Switcher from '@/components/ui/Switcher'
 import Notification from '@/components/ui/Notification'
 import toast from '@/components/ui/toast'
 import { FormContainer } from '@/components/ui/Form'
+import { apiUpdateAccountSettingData } from '@/services/AccountServices'
+import { useAppSelector, useAppDispatch } from '@/store'
+import { setUser } from '@/store/slices/auth/userSlice'
 import FormDesription from './FormDesription'
 import FormRow from './FormRow'
 import { Field, Form, Formik } from 'formik'
@@ -27,7 +30,7 @@ export type ProfileFormModel = {
     name: string
     email: string
     title: string
-    avatar: string
+    avatar: string | File
     timeZone: string
     lang: string
     syncData: boolean
@@ -48,8 +51,8 @@ const { Control } = components
 const validationSchema = Yup.object().shape({
     name: Yup.string()
         .min(3, 'Too Short!')
-        .max(12, 'Too Long!')
-        .required('User Name Required'),
+        .max(50, 'Too Long!')
+        .required('Display Name Required'),
     email: Yup.string().email('Invalid email').required('Email Required'),
     title: Yup.string(),
     avatar: Yup.string(),
@@ -66,11 +69,10 @@ const CustomSelectOption = ({
 }: OptionProps<LanguageOption>) => {
     return (
         <div
-            className={`flex items-center justify-between p-2 ${
-                isSelected
-                    ? 'bg-gray-100 dark:bg-gray-500'
-                    : 'hover:bg-gray-50 dark:hover:bg-gray-600'
-            }`}
+            className={`flex items-center justify-between p-2 ${isSelected
+                ? 'bg-gray-100 dark:bg-gray-500'
+                : 'hover:bg-gray-50 dark:hover:bg-gray-600'
+                }`}
             {...innerProps}
         >
             <div className="flex items-center">
@@ -102,6 +104,12 @@ const CustomControl = ({
     )
 }
 
+const langOptions: LanguageOption[] = [
+    { value: 'en', label: 'English', imgPath: '/img/countries/us.png' },
+    { value: 'fr', label: 'French', imgPath: '/img/countries/fr.png' },
+    { value: 'de', label: 'German', imgPath: '/img/countries/de.png' },
+]
+
 const Profile = ({
     data = {
         name: '',
@@ -113,23 +121,58 @@ const Profile = ({
         syncData: false,
     },
 }: ProfileProps) => {
+    const dispatch = useAppDispatch()
+    const { authority, userName: currentUserName, email: currentEmail } = useAppSelector((state) => state.auth.user)
+
     const onSetFormFile = (
         form: FormikProps<ProfileFormModel>,
         field: FieldInputProps<ProfileFormModel>,
         file: File[]
     ) => {
-        form.setFieldValue(field.name, URL.createObjectURL(file[0]))
+        form.setFieldValue(field.name, file[0])
     }
 
-    const onFormSubmit = (
+    const onFormSubmit = async (
         values: ProfileFormModel,
         setSubmitting: (isSubmitting: boolean) => void
     ) => {
         console.log('values', values)
-        toast.push(<Notification title={'Profile updated'} type="success" />, {
-            placement: 'top-center',
+
+        const formData = new FormData()
+        Object.entries(values).forEach(([key, value]) => {
+            if (key === 'avatar') {
+                if (value instanceof File) {
+                    formData.append(key, value)
+                }
+            } else {
+                formData.append(key, value as string)
+            }
         })
-        setSubmitting(false)
+
+        try {
+            const response = await apiUpdateAccountSettingData<any, any>(formData)
+            if (response.data) {
+                const { profile } = response.data
+                dispatch(setUser({
+                    avatar: profile.avatar,
+                    userName: currentUserName, // Preserve original login username
+                    displayName: profile.name, // Use the updated display name
+                    email: profile.email || currentEmail,
+                    authority: authority,
+                    title: profile.position
+                }))
+            }
+            toast.push(<Notification title={'Profile updated'} type="success" />, {
+                placement: 'top-center',
+            })
+        } catch (err) {
+            console.error('Update profile error:', err)
+            toast.push(<Notification title={'Failed to update profile'} type="danger" />, {
+                placement: 'top-center',
+            })
+        } finally {
+            setSubmitting(false)
+        }
     }
 
     return (
@@ -155,14 +198,14 @@ const Profile = ({
                             />
                             <FormRow
                                 name="name"
-                                label="Name"
+                                label="Display Name"
                                 {...validatorProps}
                             >
                                 <Field
                                     type="text"
                                     autoComplete="off"
                                     name="name"
-                                    placeholder="Name"
+                                    placeholder="Display Name"
                                     component={Input}
                                     prefix={
                                         <HiOutlineUserCircle className="text-xl" />
@@ -193,7 +236,7 @@ const Profile = ({
                                 <Field name="avatar">
                                     {({ field, form }: FieldProps) => {
                                         const avatarProps = field.value
-                                            ? { src: field.value }
+                                            ? { src: typeof field.value === 'string' ? field.value : URL.createObjectURL(field.value) }
                                             : {}
                                         return (
                                             <Upload
@@ -244,7 +287,7 @@ const Profile = ({
                                     }
                                 />
                             </FormRow>
-                            {/* <FormDesription
+                            <FormDesription
                                 className="mt-8"
                                 title="Preferences"
                                 desc="Your personalized preference displayed in your account"
@@ -285,7 +328,6 @@ const Profile = ({
                                 {...validatorProps}
                             >
                                 <Field
-                                    readOnly
                                     type="text"
                                     autoComplete="off"
                                     name="timeZone"
@@ -303,7 +345,7 @@ const Profile = ({
                                 border={false}
                             >
                                 <Field name="syncData" component={Switcher} />
-                            </FormRow> */}
+                            </FormRow>
                             <div className="mt-4 ltr:text-right">
                                 <Button
                                     className="ltr:mr-2 rtl:ml-2"

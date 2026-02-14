@@ -65,3 +65,7 @@ export async function apiResetPassword(data: ResetPassword) {
     // Still uses mock / placeholder behaviour for now
     return authClient.post('/reset-password', data)
 }
+
+export async function apiChangePassword<T, U>(data: U) {
+    return authClient.post<T>('/users/change-password/', data)
+}

@@ -8,6 +8,7 @@ export interface Meta {
     extraHeader?: LazyExoticComponent<() => JSX.Element>
     footer?: boolean
     layout?: LayoutType
+    isTrulyPublic?: boolean
 }
 
 export type Route = {

@@ -53,7 +53,25 @@ const AllRoutes = (props: AllRoutesProps) => {
                 <Route path="*" element={<Navigate replace to="/" />} />
             </Route>
             <Route path="/" element={<PublicRoute />}>
-                {publicRoutes.map((route) => (
+                {publicRoutes
+                    .filter((route) => !route.meta?.isTrulyPublic)
+                    .map((route) => (
+                        <Route
+                            key={route.path}
+                            path={route.path}
+                            element={
+                                <AppRoute
+                                    routeKey={route.key}
+                                    component={route.component}
+                                    {...route.meta}
+                                />
+                            }
+                        />
+                    ))}
+            </Route>
+            {publicRoutes
+                .filter((route) => route.meta?.isTrulyPublic)
+                .map((route) => (
                     <Route
                         key={route.path}
                         path={route.path}
@@ -66,7 +84,6 @@ const AllRoutes = (props: AllRoutesProps) => {
                         }
                     />
                 ))}
-            </Route>
         </Routes>
     )
 }

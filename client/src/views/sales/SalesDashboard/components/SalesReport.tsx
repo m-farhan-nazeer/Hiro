@@ -1,4 +1,3 @@
-import Button from '@/components/ui/Button'
 import Card from '@/components/ui/Card'
 import Chart from '@/components/shared/Chart'
 
@@ -21,7 +20,6 @@ const SalesReport = ({ className, data = {} }: SalesReportProps) => {
         <Card className={className}>
             <div className="flex items-center justify-between">
                 <h4>Recruitment Report</h4>
-                <Button size="sm">Export Report</Button>
             </div>
             <Chart
                 series={mutableSeries}

@@ -7,6 +7,7 @@ const authRoute: Routes = [
         path: `/apply`,
         component: lazy(() => import('@/views/applicants/ApplicantForm/PublicApplicantPage')),
         authority: [],
+        meta: { isTrulyPublic: true },
     },
     {
         key: 'signIn',

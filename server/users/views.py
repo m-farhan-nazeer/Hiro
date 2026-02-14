@@ -16,6 +16,7 @@ from .serializers import (
     LoginSerializer,
     ChangePasswordSerializer,
     LoginHistorySerializer,
+    AccountSettingUpdateSerializer,
 )
 
 
@@ -192,3 +193,68 @@ class LoginHistoryView(APIView):
         )
         serializer = LoginHistorySerializer(qs, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+
+class AccountSettingView(APIView):
+    """
+    GET /api/account/setting
+    PATCH /api/account/setting
+    Combines User and UserProfile data into the format expected by the frontend.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+    authentication_classes = (CsrfExemptSessionAuthentication,)
+
+    def get(self, request):
+        user = request.user
+        profile = getattr(user, "profile", None)
+        
+        # Get login history
+        history_qs = LoginHistory.objects.filter(user=user).order_by("-time")[:10]
+        history_data = LoginHistorySerializer(history_qs, many=True).data
+
+        data = {
+            "profile": {
+                "name": f"{user.first_name} {user.last_name}".strip() or user.username,
+                "email": user.email,
+                "title": profile.position if profile else "",
+                "avatar": request.build_absolute_uri(profile.avatar.url) if profile and profile.avatar else "",
+                "timeZone": profile.timezone if profile else "UTC",
+                "lang": profile.language if profile else "en",
+                "syncData": True,
+            },
+            "loginHistory": [
+                {
+                    "type": h["type"],
+                    "deviceName": h["device"],
+                    "time": h["time"],
+                    "location": h["location"],
+                } for h in history_data
+            ],
+            # Frontend also expects notification, news etc. but we'll send defaults
+            "notification": {
+                "news": [],
+                "accountActivity": [],
+                "signIn": [],
+                "reminders": [],
+                "mentioned": [],
+                "replies": [],
+                "taskUpdate": [],
+                "assigned": [],
+                "newProduct": [],
+                "newOrder": [],
+            }
+        }
+        return Response(data)
+
+    def patch(self, request):
+        serializer = AccountSettingUpdateSerializer(
+            request.user, 
+            data=request.data, 
+            partial=True,
+            context={"request": request}
+        )
+        if serializer.is_valid():
+            serializer.save()
+            # Return same structure as GET after update
+            return self.get(request)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
