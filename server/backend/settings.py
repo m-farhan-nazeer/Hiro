@@ -18,8 +18,12 @@ import sys
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Add the mlops directory to Python path so Django can import it
-MLOPS_DIR = BASE_DIR.parent / 'mlops'
-if str(MLOPS_DIR) not in sys.path:
+# In Docker, it's at /app/mlops. Locally it might be at ../mlops
+MLOPS_DIR = BASE_DIR / 'mlops'
+if not MLOPS_DIR.exists():
+    MLOPS_DIR = BASE_DIR.parent / 'mlops'
+
+if MLOPS_DIR.exists() and str(MLOPS_DIR) not in sys.path:
     sys.path.insert(0, str(MLOPS_DIR))
 
 
@@ -32,13 +36,15 @@ SECRET_KEY = "django-insecure-bt25))g+35(o^2p05o@#q%g1($2%zf-oqn0&9a%abx4^@lcw57
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"] # Simplest for Docker dev, or list specifically: ["localhost", "127.0.0.1", "backend"]
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
+    "http://localhost",
+    "http://127.0.0.1",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -46,6 +52,8 @@ CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5173",
     "http://localhost:5174",
     "http://127.0.0.1:5174",
+    "http://localhost",
+    "http://127.0.0.1",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -119,24 +127,14 @@ WSGI_APPLICATION = "backend.wsgi.application"
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": "posts",
-        "USER":"postgres",
-        "PASSWORD":"affan",
-        "HOST":"localhost"
+        "ENGINE": os.environ.get("SQL_ENGINE", "django.db.backends.postgresql"),
+        "NAME": os.environ.get("SQL_DATABASE", "posts"),
+        "USER": os.environ.get("SQL_USER", "postgres"),
+        "PASSWORD": os.environ.get("SQL_PASSWORD", "affan"),
+        "HOST": os.environ.get("SQL_HOST", "localhost"),
+        "PORT": os.environ.get("SQL_PORT", "5432"),
     }
 }
-
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.postgresql",
-#         "NAME": os.getenv("PGDATABASE", "posts"),
-#         "USER": os.getenv("PGUSER", "postgres"),
-#         "PASSWORD": os.getenv("PGPASSWORD", ""),
-#         "HOST": os.getenv("PGHOST", "localhost"),
-#         "PORT": os.getenv("PGPORT", "5432"),
-#     }
-# }
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -179,6 +177,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
