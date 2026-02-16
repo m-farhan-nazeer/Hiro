@@ -75,7 +75,7 @@ const Applicants = () => {
                     </div>
                 )}
             </div>
-            <AdaptableCard className="h-full" bodyClass="h-full">
+            <AdaptableCard bodyClass="h-full">
                 <CustomersTableTools jobId={jobId} />
                 <CustomersTable jobId={jobId} />
             </AdaptableCard>

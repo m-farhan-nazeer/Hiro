@@ -11,7 +11,7 @@ const Applicants = () => {
     return (
         <>
             <CustomerStatistic />
-            <AdaptableCard className="h-full" bodyClass="h-full">
+            <AdaptableCard bodyClass="h-full">
                 <CustomersTableTools />
                 <CustomersTable />
             </AdaptableCard>

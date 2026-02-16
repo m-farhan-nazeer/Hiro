@@ -214,7 +214,7 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
                 accessorKey: 'status',
                 cell: (props) => {
                     const row = props.row.original
-                    const status = row.status || 'pending'
+                    const status = (row.status || 'pending').toLowerCase()
                     const currentOption = statusOptions.find(opt => opt.value === status) || statusOptions[0]
 
                     return (
@@ -225,6 +225,8 @@ const Customers = ({ jobId }: CustomersTableProps = {}) => {
                                 className="min-w-[120px]"
                                 value={currentOption}
                                 options={statusOptions}
+                                menuPortalTarget={document.body}
+                                menuPosition="fixed"
                                 onChange={(option: SingleValue<StatusOption>) => {
                                     if (option && option.value !== status) {
                                         handleStatusChange(row.id, option.value)
