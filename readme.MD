@@ -3,7 +3,6 @@
 ## 📌 Project Description
 Hiro is an **AI-powered recruitment web application** designed to simplify the hiring process. Recruiters can post jobs, review applicants, and leverage AI-based scoring to identify the best candidates faster. The platform offers modern dashboards, applicant profiles with resume previews, and insightful analytics — all in a responsive, user-friendly interface.
 
-
 ---
 
 ## ✨ Features
@@ -19,41 +18,343 @@ Hiro is an **AI-powered recruitment web application** designed to simplify the h
 ---
 
 ## 🛠️ Tech Stack
-- **Frontend:** React, Tailwind CSS  
-- **Backend:** Django / Django REST Framework  
-- **Database:** PostgreSQL  
-- **Authentication:** Email/Password + Google OAuth  
-- **AI:** Resume parsing & candidate scoring  
+- **Frontend:** React + Vite, Tailwind CSS (served via Nginx)
+- **Backend:** Django 5.x + Django REST Framework (Python 3.11)
+- **Database:** PostgreSQL 15
+- **Authentication:** Session-based + Google OAuth
+- **AI/ML:** Resume parsing & candidate scoring (with Playwright for web scraping)
+- **Containerization:** Docker + Docker Compose
 
 ---
 
-## ⚙️ Setup Instructions
+## 🐳 Docker Architecture
 
-### Client (Frontend)
+### Container Overview
+
+The application runs in **3 Docker containers**:
+
+1. **`db` (PostgreSQL 15)**
+   - Database container
+   - Persistent volume: `postgres_data`
+   - Accessible internally on port 5432
+
+2. **`backend` (Django)**
+   - Python 3.11 slim image
+   - Includes Playwright (Chromium) for web scraping
+   - Exposes port 8000
+   - Auto-runs migrations on startup
+   - Serves API endpoints at `/api`
+
+3. **`frontend` (React + Nginx)**
+   - Multi-stage build (Node.js → Nginx)
+   - Production-optimized static files
+   - Exposes port 80 (main entry point)
+   - Proxies `/api` requests to backend
+   - Serves React SPA
+
+### Network
+
+All containers communicate via a custom bridge network: `hiro_network`
+
+### Build Process
+
+**Frontend (Multi-stage):**
+1. **Stage 1 (build-stage):** Node.js 20 compiles React → static files
+2. **Stage 2 (production-stage):** Nginx serves static files + proxies API
+
+**Backend:**
+- Single-stage build with Python 3.11
+- Installs system dependencies (PostgreSQL client, netcat)
+- Installs Python packages + Playwright with Chromium
+- Copies `server/` and `mlops/` directories
+- Runs entrypoint script for migrations + server startup
+
+---
+
+## 🚀 Quick Start (Docker - Recommended)
+
+### Prerequisites
+- Docker Desktop installed ([Download](https://www.docker.com/products/docker-desktop))
+- Docker Compose (included with Docker Desktop)
+
+### 1. Clone the Repository
+```bash
+git clone <your-repo-url>
+cd Hiro
+```
+
+### 2. Configure Environment Variables
+Create `.env.docker` file in the project root:
+```bash
+# Database
+DATABASE=postgres
+SQL_ENGINE=django.db.backends.postgresql
+SQL_DATABASE=hiro_db
+SQL_USER=postgres
+SQL_PASSWORD=postgres
+SQL_HOST=db
+SQL_PORT=5432
+
+# Django
+SECRET_KEY=your-secret-key-here
+DEBUG=1
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Optional: Add your API keys for AI features
+OPENAI_API_KEY=your-openai-key
+```
+
+### 3. Build and Run
+```bash
+# Build images and start all containers
+docker compose up --build
+
+# Or run in detached mode (background)
+docker compose up --build -d
+```
+
+### 4. Access the Application
+- **Frontend:** http://localhost
+- **Backend API:** http://localhost/api
+- **Direct Backend:** http://localhost:8000 (if needed)
+
+### 5. Create Admin User (Optional)
+```bash
+# While containers are running, open a new terminal
+docker compose exec backend python manage.py createsuperuser
+```
+
+---
+
+## 🔧 Docker Management Commands
+
+### Starting & Stopping
+
+```bash
+# Start containers (without rebuilding)
+docker compose up
+
+# Start in background
+docker compose up -d
+
+# Stop containers (keeps containers)
+docker compose stop
+
+# Stop and remove containers
+docker compose down
+
+# Stop and remove containers + volumes (clears database!)
+docker compose down -v
+```
+
+### When to Use `--build`
+
+**Use `docker compose up --build` when:**
+- First time setup
+- You modified frontend code (React/TypeScript)
+- You modified backend code (Python/Django)
+- You changed dependencies (package.json or requirements.txt)
+- You updated Dockerfiles
+
+**Use `docker compose up` when:**
+- Just restarting after `docker compose stop`
+- No code changes were made
+- Much faster!
+
+### View Logs
+
+```bash
+# All containers
+docker compose logs
+
+# Follow logs in real-time
+docker compose logs -f
+
+# Specific service
+docker compose logs backend
+docker compose logs frontend
+docker compose logs db
+
+# Last 50 lines
+docker compose logs --tail=50 -f
+```
+
+### Execute Commands in Containers
+
+```bash
+# Django shell
+docker compose exec backend python manage.py shell
+
+# Run migrations
+docker compose exec backend python manage.py migrate
+
+# Create superuser
+docker compose exec backend python manage.py createsuperuser
+
+# Access PostgreSQL
+docker compose exec db psql -U postgres -d hiro_db
+
+# Access backend container bash
+docker compose exec backend /bin/sh
+```
+
+### Rebuild Specific Service
+
+```bash
+# Rebuild only backend
+docker compose build backend
+
+# Rebuild only frontend
+docker compose build frontend
+
+# Then restart
+docker compose up
+```
+
+---
+
+## 🖥️ Docker Desktop GUI Management
+
+You can manage containers visually through **Docker Desktop**:
+
+1. Open Docker Desktop application
+2. Navigate to **Containers** tab
+3. Find `hiro` project
+4. Available actions:
+   - ▶️ Start/Stop containers
+   - 🔄 Restart containers
+   - 📊 View logs and stats
+   - 🗑️ Delete containers
+   - 🔍 Inspect container details
+
+---
+
+## 🔍 Troubleshooting
+
+### Database Connection Issues
+```bash
+# Check if PostgreSQL is ready
+docker compose exec backend nc -z db 5432
+
+# View database logs
+docker compose logs db
+```
+
+### Port Already in Use
+```bash
+# If port 80 or 8000 is occupied:
+# Option 1: Stop the conflicting service
+# Option 2: Change ports in docker-compose.yml
+ports:
+  - "8080:80"  # Changed from 80:80
+```
+
+### Reset Everything (Clean Slate)
+```bash
+# Stop and remove containers, networks, volumes
+docker compose down -v
+
+# Remove images (optional)
+docker rmi hiro-frontend hiro-backend
+
+# Rebuild from scratch
+docker compose up --build
+```
+
+### Container Exits Immediately
+```bash
+# Check container logs
+docker compose logs backend
+
+# Common issues:
+# - Database not ready → entrypoint.sh handles this
+# - Missing .env.docker → create it
+# - Port conflict → change ports in docker-compose.yml
+```
+
+---
+
+## 📦 Alternative: Local Development (Without Docker)
+
+### Frontend
 ```bash
 cd client
 npm install
-npm run start
+npm run dev
+# Runs on http://localhost:5173
 ```
 
-### Server (Backend)
+### Backend
 ```bash
 cd server
 
-# Create Virtual Environment
-
-# (Windows)
-python -m venv venv 
-.\venv\Scripts\activate
-
-# (UNIX/MacOS)
+# Create virtual environment
 python3 -m venv venv
-source venv/bin/activate
+source venv/bin/activate  # Windows: venv\Scripts\activate
 
-# Run Server
+# Install dependencies
+pip install -r requirements.txt
+
+# Install Playwright
+playwright install chromium
+
+# Set up PostgreSQL (must be installed separately)
+# Update server/.env with your local database credentials
+
+# Run migrations
+python manage.py migrate
+
+# Create superuser
+python manage.py createsuperuser
+
+# Start server
 python manage.py runserver
-
+# Runs on http://localhost:8000
 ```
+
+> **Note:** When running locally, you'll need to:
+> - Install PostgreSQL 15 separately
+> - Update API proxy in frontend (Vite config)
+> - Manage Python virtual environment
+> - Install system dependencies for Playwright
+
+---
+
+## 🌐 Deployment Options
+
+### Docker Hub Distribution
+
+**Push to Docker Hub:**
+```bash
+# Login
+docker login
+
+# Tag images
+docker tag hiro-backend-1 yourusername/hiro-backend:v1.0.0
+docker tag hiro-frontend-1 yourusername/hiro-frontend:v1.0.0
+
+# Push
+docker push yourusername/hiro-backend:v1.0.0
+docker push yourusername/hiro-frontend:v1.0.0
+```
+
+**Others can pull:**
+```bash
+docker pull yourusername/hiro-backend:v1.0.0
+docker pull yourusername/hiro-frontend:v1.0.0
+```
+
+### Production Deployment
+
+For production, update `docker-compose.yml`:
+- Use specific version tags instead of `latest`
+- Set `DEBUG=0` in environment
+- Configure proper `SECRET_KEY`
+- Set up SSL/HTTPS (add reverse proxy like Traefik/Nginx)
+- Use managed database (AWS RDS, DigitalOcean Database)
+- Configure `ALLOWED_HOSTS` properly
+
+---
 # Applicants API (Django + DRF + PostgreSQL)
 
 Backend module to manage job applicants with full CRUD and resume storage as a **BLOB (bytea)** in PostgreSQL.
