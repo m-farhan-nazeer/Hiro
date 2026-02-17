@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file:
+      - .env.docker
+    networks:
+      - hiro_network
+
+  backend:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    volumes:
+      - ./server/media:/app/media
+    env_file:
+      - .env.docker
+    depends_on:
+      - db
+    networks:
+      - hiro_network
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    depends_on:
+      - backend
+    networks:
+      - hiro_network
+    ports:
+      - "80:80"
+
+networks:
+  hiro_network:
+    driver: bridge
+
+volumes:
+  postgres_data:

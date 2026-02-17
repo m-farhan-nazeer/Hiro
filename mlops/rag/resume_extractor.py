@@ -137,7 +137,7 @@ def extract_resume_insights(resume_bytes: bytes, filename: str = "resume.pdf") -
         
         # Set up LLM with structured output
         llm = ChatOpenAI(
-            model="gpt-4o-mini",  # Fast and cost-effective
+            model="gpt-4o",  # Fast and cost-effective
             temperature=0,  # Deterministic extraction
         )
         

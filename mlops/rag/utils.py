@@ -90,32 +90,43 @@ def detect_category(text: str) -> str:
 # -----------------------------
 # STORE JOB DESCRIPTION
 # -----------------------------
-def store_job_description(job_text: str):
+def store_job_description(job_text: str, job_id: int = None):
 
-    print("\n📌 Storing Job Description in Qdrant...")
+    print(f"\n📌 Storing Job Description {f'#{job_id}' if job_id else ''} in Qdrant...")
 
     embedding_model = get_embedding_model()
+    client = get_qdrant_client()
 
-    doc = Document(page_content=job_text, metadata={"type": "job_description"})
-
-    QdrantVectorStore.from_documents(
-        documents=[doc],
-        embedding=embedding_model,
-        collection_name=JOB_COLLECTION,
-        url=os.getenv("QDRANT_URL"),
-        api_key=os.getenv("QDRANT_API_KEY"),
-        # If collection already exists with a different vector size,
-        # drop and recreate it so embeddings stay compatible.
-        force_recreate=True,
+    doc = Document(
+        page_content=job_text, 
+        metadata={
+            "type": "job_description",
+            "job_id": job_id
+        }
     )
 
-    print("✅ Job Description stored successfully.")
+    # Use QdrantVectorStore but with a specific ID to prevent duplicates
+    # Qdrant IDs can be integers or UUIDs. We use job_id as integer.
+    vector_store = QdrantVectorStore(
+        client=client,
+        collection_name=JOB_COLLECTION,
+        embedding=embedding_model,
+    )
+    
+    # Use add_documents with ids to ensure UPSERT behavior (no duplicates)
+    if job_id:
+        vector_store.add_documents(documents=[doc], ids=[job_id])
+    else:
+        # Fallback to standard flow if no ID
+        vector_store.add_documents(documents=[doc])
+
+    print(f"✅ Job Description {f'#{job_id}' if job_id else ''} stored/updated successfully.")
 
 
 # -----------------------------
 # MAIN RANKING FUNCTION
 # -----------------------------
-def rank_resume_against_job(file_path, custom_weights=None):
+def rank_resume_against_job(file_path, job_text=None, job_id: int = None, custom_weights=None):
 
     print("\n📄 Processing Resume...\n")
 
@@ -148,15 +159,33 @@ def rank_resume_against_job(file_path, custom_weights=None):
         for chunk in text_chunks
     ]
 
-    # Load latest job description from Qdrant
-    job_qdrant = QdrantVectorStore(
-        client=client,
-        collection_name=JOB_COLLECTION,
-        embedding=embedding_model,
-    )
+    # Load latest job description from Qdrant IF not provided directly
+    if not job_text:
+        job_qdrant = QdrantVectorStore(
+            client=client,
+            collection_name=JOB_COLLECTION,
+            embedding=embedding_model,
+        )
+        
+        # If we have a job_id, try to fetch exactly that point
+        if job_id:
+            try:
+                # Retrieve by ID from Qdrant
+                points = client.retrieve(
+                    collection_name=JOB_COLLECTION,
+                    ids=[job_id],
+                    with_payload=True
+                )
+                if points:
+                    job_text = points[0].payload.get("page_content")
+            except Exception as e:
+                print(f"⚠️ Failed to retrieve job by ID {job_id}: {e}")
 
-    job_docs = job_qdrant.similarity_search("job description", k=1)
-    job_text = job_docs[0].page_content
+        # Fallback to similarity search if ID fetch failed or wasn't provided
+        if not job_text:
+            job_docs = job_qdrant.similarity_search("job description", k=1)
+            job_text = job_docs[0].page_content
+    
     job_vector = embedding_model.embed_query(job_text)
 
     # print("🧠 Loaded Job Description from Qdrant.")

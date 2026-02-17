@@ -82,7 +82,7 @@ def process_application_all_in_one(applicant_id: int, application_id: int) -> No
 
         if job_text:
             try:
-                store_job_description(job_text)
+                store_job_description(job_text, job_id=job.id)
             except Exception as e:
                 logger.error(f"Failed to store job description: {e}")
 
@@ -102,7 +102,12 @@ def process_application_all_in_one(applicant_id: int, application_id: int) -> No
                 "institute": job.weight_institute,
             }
 
-            generated_score = rank_resume_against_job(tmp_path, custom_weights=weights)
+            generated_score = rank_resume_against_job(
+                tmp_path, 
+                job_text=job_text, 
+                job_id=job.id, 
+                custom_weights=weights
+            )
             application.score = generated_score
             application.scoring_status = "completed"
             application.save(update_fields=["score", "scoring_status"])

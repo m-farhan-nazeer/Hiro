@@ -42,7 +42,7 @@ const PageContainer = (props: PageContainerProps) => {
                     className={classNames(
                         'page-container relative h-full flex flex-auto flex-col',
                         pageContainerType !== 'gutterless' &&
-                            `${PAGE_CONTAINER_GUTTER_X} ${PAGE_CONTAINER_GUTTER_Y}`,
+                        `${PAGE_CONTAINER_GUTTER_X} ${PAGE_CONTAINER_GUTTER_Y}`,
                         pageContainerType === 'contained' && 'container mx-auto'
                     )}
                 >
