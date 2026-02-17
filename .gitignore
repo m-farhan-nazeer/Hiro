@@ -82,6 +82,10 @@ ios/
 
 # Secrets and credentials
 *.env
+.env
+.env.docker
+.env.local
+.env.production
 .env/
 *.ini
 config/*.json
