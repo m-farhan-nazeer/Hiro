@@ -114,6 +114,9 @@ const salesDashboardSlice = createSlice({
             .addCase(getSalesDashboardData.pending, (state) => {
                 state.loading = true
             })
+            .addCase(getSalesDashboardData.rejected, (state) => {
+                state.loading = false
+            })
     },
 })
 
