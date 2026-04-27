@@ -20,12 +20,16 @@ BaseService.interceptors.response.use(
     (error) => {
         const { response } = error
 
-        // If unauthorized/forbidden, clear auth state
-        if (response && (response.status === 401 || response.status === 403)) {
-            // Only clear if it's an auth-related endpoint
-            if (response.config?.url?.includes('/users/')) {
-                store.dispatch(signOutSuccess())
-            }
+        // If session is invalid/missing, clear auth state so app redirects to sign-in.
+        const isMissingAuthCredentials =
+            response?.status === 403 &&
+            typeof response?.data?.detail === 'string' &&
+            response.data.detail
+                .toLowerCase()
+                .includes('authentication credentials were not provided')
+
+        if (response && (response.status === 401 || isMissingAuthCredentials)) {
+            store.dispatch(signOutSuccess())
         }
 
         return Promise.reject(error)
