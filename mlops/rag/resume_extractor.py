@@ -162,12 +162,13 @@ Instructions:
         
         chain = prompt | llm | parser
         
-        logger.info("Invoking LLM for extraction...")
+        print("Invoking LLM for extraction...")
         result = chain.invoke({
             "resume_text": resume_text[:10000],  # Limit to first 10k chars to avoid token limits
             "format_instructions": parser.get_format_instructions()
         })
         
+        print(f"Extracted resume insights for {filename}:\n{json.dumps(result, indent=2)}")
         logger.info("Extraction successful")
         return result
         

@@ -118,6 +118,7 @@ def process_application_all_in_one(applicant_id: int, application_id: int) -> No
 
         # 3. Profile Extraction
         # Extract insights from resume
+        print(f"Starting profile extraction for application {application_id}")
         insights = extract_resume_insights(
             resume_bytes=application.resume,
             filename=f"resume_{applicant_id}.pdf"
