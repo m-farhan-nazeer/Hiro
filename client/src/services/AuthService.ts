@@ -7,9 +7,10 @@ import type {
     SignInResponse,
     SignUpResponse,
 } from '@/@types/auth'
+import { API_BASE_URL } from '@/services/apiBase'
 
-// Django backend base URL (dev)
-const AUTH_BASE_URL = 'http://localhost:8000'
+// Django backend base URL — configured via VITE_API_URL env variable
+const AUTH_BASE_URL = API_BASE_URL
 
 const authClient = axios.create({
     baseURL: AUTH_BASE_URL,
