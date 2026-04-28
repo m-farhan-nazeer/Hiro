@@ -4,8 +4,8 @@ import { PERSIST_STORE_NAME } from '@/constants/app.constant'
 import deepParseJson from '@/utils/deepParseJson'
 import store, { signOutSuccess } from '../store'
 
-// Django backend base URL (dev)
-const BACKEND_BASE_URL = 'http://localhost:8000'
+// Django backend base URL — configurable via VITE_API_URL for production deployments
+const BACKEND_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const BaseService = axios.create({
     timeout: 60000,
