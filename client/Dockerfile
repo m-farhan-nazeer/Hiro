@@ -4,11 +4,11 @@ FROM node:20-alpine as build-stage
 WORKDIR /app
 
 # Install dependencies
-COPY package*.json ./
+COPY client/package*.json ./
 RUN npm install
 
 # Copy source and build
-COPY . .
+COPY client/ .
 RUN npm run build
 
 # Production Stage
