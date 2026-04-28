@@ -4,6 +4,8 @@ import os
 import json
 import tempfile
 import logging
+import subprocess
+import re
 from typing import List, Optional
 
 from langchain_openai import ChatOpenAI
@@ -14,6 +16,43 @@ from pydantic import BaseModel, Field
 from .utils import load_single_file
 
 logger = logging.getLogger(__name__)
+
+
+def _is_weak_extracted_text(text: str) -> bool:
+    stripped = text.strip()
+    if len(stripped) < 300:
+        return True
+
+    words = re.findall(r"[A-Za-z]{2,}", stripped)
+    if len(words) < 50:
+        return True
+
+    alpha_chars = sum(1 for ch in stripped if ch.isalpha())
+    return alpha_chars / max(len(stripped), 1) < 0.35
+
+
+def _run_ocrmypdf(input_path: str) -> str:
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        output_path = tmp.name
+
+    try:
+        subprocess.run(
+            [
+                "ocrmypdf",
+                "--force-ocr",
+                input_path,
+                output_path,
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        return output_path
+    except subprocess.CalledProcessError as exc:
+        if os.path.exists(output_path):
+            os.remove(output_path)
+        raise RuntimeError(f"OCRmyPDF failed: {exc.stderr.strip() or exc.stdout.strip()}") from exc
 
 
 # -----------------------------
@@ -123,13 +162,28 @@ def extract_resume_insights(resume_bytes: bytes, filename: str = "resume.pdf") -
     with tempfile.NamedTemporaryFile(suffix=file_ext, delete=False) as tmp:
         tmp.write(resume_bytes)
         tmp_path = tmp.name
+    ocr_tmp_path = None
     
     try:
         # Load resume content
         logger.info(f"Loading resume from temp file: {tmp_path}")
         documents = load_single_file(tmp_path)
         resume_text = "\n\n".join([doc.page_content for doc in documents])
-        
+
+        print(f"Initial extracted text length for {filename}: {len(resume_text.strip())} characters")
+        print(f"Initial extracted text preview for {filename}:\n{resume_text[:500]}")
+
+        if file_ext.lower() == ".pdf" and _is_weak_extracted_text(resume_text):
+            print(f"Weak PDF text detected for {filename}. Triggering OCR fallback...")
+            try:
+                ocr_tmp_path = _run_ocrmypdf(tmp_path)
+                ocr_documents = load_single_file(ocr_tmp_path)
+                resume_text = "\n\n".join([doc.page_content for doc in ocr_documents])
+                print(f"OCR extracted text length for {filename}: {len(resume_text.strip())} characters")
+                print(f"OCR extracted text preview for {filename}:\n{resume_text[:500]}")
+            except Exception as exc:
+                print(f"OCR fallback failed for {filename}: {exc}")
+
         if not resume_text.strip():
             raise ValueError("Resume appears to be empty or unreadable")
         
@@ -184,6 +238,11 @@ Instructions:
                 logger.debug(f"Cleaned up temp file: {tmp_path}")
             except OSError as e:
                 logger.warning(f"Failed to remove temp file {tmp_path}: {e}")
+        if ocr_tmp_path and os.path.exists(ocr_tmp_path):
+            try:
+                os.remove(ocr_tmp_path)
+            except OSError as e:
+                logger.warning(f"Failed to remove OCR temp file {ocr_tmp_path}: {e}")
 
 
 # -----------------------------
