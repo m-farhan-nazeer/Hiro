@@ -179,10 +179,14 @@ def extract_resume_insights(resume_bytes: bytes, filename: str = "resume.pdf") -
                 ocr_tmp_path = _run_ocrmypdf(tmp_path)
                 ocr_documents = load_single_file(ocr_tmp_path)
                 resume_text = "\n\n".join([doc.page_content for doc in ocr_documents])
+                used_ocr = True
                 print(f"OCR extracted text length for {filename}: {len(resume_text.strip())} characters")
                 print(f"OCR extracted text preview for {filename}:\n{resume_text[:500]}")
             except Exception as exc:
+                used_ocr = False
                 print(f"OCR fallback failed for {filename}: {exc}")
+        else:
+            used_ocr = False
 
         if not resume_text.strip():
             raise ValueError("Resume appears to be empty or unreadable")
@@ -221,6 +225,7 @@ Instructions:
             "resume_text": resume_text[:10000],  # Limit to first 10k chars to avoid token limits
             "format_instructions": parser.get_format_instructions()
         })
+        result["ocr_used"] = used_ocr
         
         print(f"Extracted resume insights for {filename}:\n{json.dumps(result, indent=2)}")
         logger.info("Extraction successful")

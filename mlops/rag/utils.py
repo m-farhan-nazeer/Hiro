@@ -87,6 +87,70 @@ def detect_category(text: str) -> str:
     return "institute"
 
 
+def build_scoring_text_from_insights(insights: dict) -> str:
+    parts = []
+
+    if insights.get("summary"):
+        parts.append(f"Summary: {insights['summary']}")
+
+    skills = insights.get("skills") or []
+    if skills:
+        skill_names = [skill.get("name", "") if isinstance(skill, dict) else str(skill) for skill in skills]
+        parts.append("Skills: " + ", ".join([s for s in skill_names if s]))
+
+    experience = insights.get("experience") or []
+    if experience:
+        exp_lines = []
+        for item in experience:
+            if isinstance(item, dict):
+                exp_lines.append(
+                    " | ".join(
+                        [
+                            item.get("title", ""),
+                            item.get("company", ""),
+                            item.get("duration", ""),
+                            item.get("description", ""),
+                        ]
+                    )
+                )
+        parts.append("Experience:\n" + "\n".join([line for line in exp_lines if line.strip(" |")]))
+
+    education = insights.get("education") or []
+    if education:
+        edu_lines = []
+        for item in education:
+            if isinstance(item, dict):
+                edu_lines.append(
+                    " | ".join(
+                        [
+                            item.get("degree", ""),
+                            item.get("field", ""),
+                            item.get("institution", ""),
+                            item.get("year", ""),
+                        ]
+                    )
+                )
+        parts.append("Education:\n" + "\n".join([line for line in edu_lines if line.strip(" |")]))
+
+    certifications = insights.get("certifications") or []
+    if certifications:
+        cert_lines = []
+        for item in certifications:
+            if isinstance(item, dict):
+                cert_lines.append(
+                    " | ".join(
+                        [
+                            item.get("name", ""),
+                            item.get("issuer", ""),
+                            str(item.get("year", "") or ""),
+                        ]
+                    )
+                )
+        parts.append("Certifications:\n" + "\n".join([line for line in cert_lines if line.strip(" |")]))
+
+    return "\n\n".join(parts)
+
+
 # -----------------------------
 # STORE JOB DESCRIPTION
 # -----------------------------
@@ -126,7 +190,7 @@ def store_job_description(job_text: str, job_id: int = None):
 # -----------------------------
 # MAIN RANKING FUNCTION
 # -----------------------------
-def rank_resume_against_job(file_path, job_text=None, job_id: int = None, custom_weights=None):
+def rank_resume_against_job(file_path, job_text=None, job_id: int = None, custom_weights=None, resume_text_override: str | None = None):
 
     print("\n📄 Processing Resume...\n")
 
@@ -143,8 +207,12 @@ def rank_resume_against_job(file_path, job_text=None, job_id: int = None, custom
             normalized_weights[cat] = w
 
     # Load + chunk resume
-    documents = load_single_file(file_path)
-    text_chunks = create_chunks(documents)
+    if resume_text_override is not None:
+        print("\n🧾 Scoring from extracted insights text...\n")
+        text_chunks = create_chunks([Document(page_content=resume_text_override, metadata={"source": file_path, "type": "extracted_insights"})])
+    else:
+        documents = load_single_file(file_path)
+        text_chunks = create_chunks(documents)
 
     embedding_model = get_embedding_model()
     client = get_qdrant_client()

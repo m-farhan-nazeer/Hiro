@@ -49,7 +49,7 @@ def process_application_all_in_one(applicant_id: int, application_id: int) -> No
     from applicants.models import Applicant, ApplicantProfile
     from applications.models import Application
     from rag.resume_extractor import extract_resume_insights
-    from rag.utils import store_job_description, rank_resume_against_job
+    from rag.utils import build_scoring_text_from_insights, store_job_description, rank_resume_against_job
     from posts.models import Job
 
     try:
@@ -86,12 +86,18 @@ def process_application_all_in_one(applicant_id: int, application_id: int) -> No
             except Exception as e:
                 logger.error(f"Failed to store job description: {e}")
 
-        # Rank resume
+        # Extract profile first so OCR-based resumes can score from extracted insights
         tmp_path = None
         try:
             with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp_file:
                 tmp_file.write(application.resume)
                 tmp_path = tmp_file.name
+
+            print(f"Starting profile extraction for application {application_id}")
+            insights = extract_resume_insights(
+                resume_bytes=application.resume,
+                filename=f"resume_{applicant_id}.pdf"
+            )
 
             # Extract custom weights from job
             weights = {
@@ -102,11 +108,19 @@ def process_application_all_in_one(applicant_id: int, application_id: int) -> No
                 "institute": job.weight_institute,
             }
 
+            score_text_override = None
+            if insights.get("ocr_used"):
+                score_text_override = build_scoring_text_from_insights(insights)
+                print(f"OCR was used for application {application_id}. Scoring from extracted insights.")
+            else:
+                print(f"OCR was not used for application {application_id}. Scoring from raw resume text.")
+
             generated_score = rank_resume_against_job(
                 tmp_path, 
                 job_text=job_text, 
                 job_id=job.id, 
-                custom_weights=weights
+                custom_weights=weights,
+                resume_text_override=score_text_override
             )
             application.score = generated_score
             application.scoring_status = "completed"
@@ -116,14 +130,6 @@ def process_application_all_in_one(applicant_id: int, application_id: int) -> No
             if tmp_path and os.path.exists(tmp_path):
                 os.remove(tmp_path)
 
-        # 3. Profile Extraction
-        # Extract insights from resume
-        print(f"Starting profile extraction for application {application_id}")
-        insights = extract_resume_insights(
-            resume_bytes=application.resume,
-            filename=f"resume_{applicant_id}.pdf"
-        )
-        
         # Create or update profile
         ApplicantProfile.objects.update_or_create(
             applicant=applicant,
