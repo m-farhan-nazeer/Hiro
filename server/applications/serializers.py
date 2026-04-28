@@ -131,6 +131,8 @@ class ApplicationCreateSerializer(serializers.Serializer):
             raise ValidationError(
                 {"error": "Database integrity error", "message": str(e)}
             )
+        except ValidationError:
+            raise
         except Exception as e:
             logger.error(f"Unexpected error creating application: {str(e)}")
             raise ValidationError(
