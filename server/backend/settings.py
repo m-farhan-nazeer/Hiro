@@ -38,23 +38,16 @@ DEBUG = True
 
 ALLOWED_HOSTS = ["*"] # Simplest for Docker dev, or list specifically: ["localhost", "127.0.0.1", "backend"]
 
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-    "http://localhost",
-    "http://127.0.0.1",
-]
+# Parse comma-separated list from environment, with sensible dev defaults
+CORS_ALLOWED_ORIGINS = os.environ.get(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost,http://127.0.0.1"
+).split(",")
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:5174",
-    "http://127.0.0.1:5174",
-    "http://localhost",
-    "http://127.0.0.1",
-]
+CSRF_TRUSTED_ORIGINS = os.environ.get(
+    "CSRF_TRUSTED_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174,http://localhost,http://127.0.0.1"
+).split(",")
 
 CORS_ALLOW_CREDENTIALS = True
 
