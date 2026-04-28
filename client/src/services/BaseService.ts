@@ -3,9 +3,10 @@ import appConfig from '@/configs/app.config'
 import { PERSIST_STORE_NAME } from '@/constants/app.constant'
 import deepParseJson from '@/utils/deepParseJson'
 import store, { signOutSuccess } from '../store'
+import { API_BASE_URL } from '@/services/apiBase'
 
-// Django backend base URL — configurable via VITE_API_URL for production deployments
-const BACKEND_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// Django backend base URL — configured via VITE_API_URL env variable
+const BACKEND_BASE_URL = API_BASE_URL
 
 const BaseService = axios.create({
     timeout: 60000,
